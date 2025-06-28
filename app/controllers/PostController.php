@@ -115,6 +115,13 @@ class PostController extends ControllersParent{
         return in_array($post,$this->getAll());
     }
 
+
+    public function getStats():array{
+        return[
+            "posts"=>count($this->getAll()),
+        ];
+    }
+
 }
 
 

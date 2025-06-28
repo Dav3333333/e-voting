@@ -140,9 +140,19 @@ class Controller {
 
     // statisfunction of things here
 
+    /**
+     * return and array that contains the global stats about
+     * polls: done, notdone, number of participant, participant perpoll, 
+     * @return array
+     */
     public function getStatistics():array{
         return[
-            
+            "status"=> "success",
+            "message"=>[
+                "poll"=>$this->pollController->getStats(),
+                "posts"=>$this->postController->getStats(), 
+                "users"=> $this->usersController->getStats()
+            ],
         ];
     }
 

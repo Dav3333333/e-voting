@@ -107,7 +107,7 @@ class PollController extends ControllersParent{
         $l = [];
 
         foreach ($this->getAll() as $key => $value) {
-            if($value->getDateEnd()->getTimestamp() < $this->dateTime->getTimestamp() || 
+            if($value->getDateEnd()->getTimestamp() <= $this->dateTime->getTimestamp() || 
                 $value->getStatus() == "passed"
             ){
                 $l[] = $value; 
@@ -219,5 +219,18 @@ class PollController extends ControllersParent{
     public function reinitialiteState(int $id):bool{
         // initialte the state to inactif
         return false;
+    }
+
+    /**
+     * return an array 
+     * @return array
+     */
+    public function getStats():array{
+        return [
+            "totalPoll"=>count($this->getAll()),
+            "futurePoll"=>count($this->getForFuture()),
+            "passedPoll"=>count($this->getPassed()), 
+            "activePoll"=>count($this->getForNow()),
+        ];
     }
 }

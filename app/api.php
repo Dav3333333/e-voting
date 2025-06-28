@@ -31,6 +31,9 @@ class Api
         // user endPont
         $this->usersEnpoints();
 
+        // statiscs endpoint
+        $this->statsEndPoints();
+
         // adding the handle requests
         echo $this->handleRequest($_SERVER["REQUEST_METHOD"], $_SERVER["REQUEST_URI"]);
    }
@@ -68,6 +71,12 @@ class Api
           return json_encode($this->controller->getUsers());
      } );
 
+   }
+
+   private function statsEndPoints(){
+     $this->add_roote("get", "statisctis", function(){
+          return json_encode($this->controller->getStatistics());
+     });
    }
 
 //    private function getImagesEndPoints(){

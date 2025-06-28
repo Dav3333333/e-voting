@@ -41,3 +41,13 @@ ADMIN WORK FLOW
     - can set the state of a poll to inactif stop the vote and make the result ready
 
 
+------------------------------------------ to do ----------------------------
+
+
+to be done: 
+    - write a php function that return all the global stats polls, users, post, result, participation, last moths active count, ..., and put the into statistics page
+    - fetch the user from the api and display them and allso displays some stats of users page like the totale of all the users
+
+
+the part of enrollement
+    it must be a class controller and  we must have a table for it with in the (userId, pollId, date)

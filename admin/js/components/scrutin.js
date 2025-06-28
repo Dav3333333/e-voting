@@ -94,9 +94,8 @@ class Scrutin{
     }
 
     render(){
-      const model = `<section class="election-container"> </section>`;
 
-      this.#container.innerHTML = model;
+      this.#container.innerHTML = "";
       this.#container.appendChild(this.getPollList()) 
 
       return this.#container;

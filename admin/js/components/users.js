@@ -13,6 +13,10 @@ class Users{
         });
     }
 
+    rendertableUser(){
+      const table = document.createElement("table");
+    }
+
     render(){
         const model = `<!-- users list -->
     <h2 class="text-center text-bold">Liste des utilisateurs</h2>

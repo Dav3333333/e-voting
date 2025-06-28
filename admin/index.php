@@ -16,7 +16,7 @@
   <aside id="sidebar">
     <nav>
       <ul>
-        <li><a class="menu-link" id="statistics" href="#">Statistiques</a></li>
+        <li><a class="menu-link active" id="statistics" href="#">Statistiques</a></li>
         <li><a class="menu-link" id="poll" href="#">Scrutin</a></li>
         <li><a class="menu-link" id="setting" href="#">Paramètres</a></li>
         <li><a class="menu-link" id="users" href="#">Utilisateurs</a></li>
@@ -29,7 +29,7 @@
     
   
   </main>
-
+  <script src="./js/js.js"></script>
   <script type="module" src="./js/admin.js"></script>
 </body>
 </html>

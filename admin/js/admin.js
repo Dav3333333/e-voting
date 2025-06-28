@@ -11,20 +11,36 @@ class Admin {
     constructor() {
         this.#aside = document.querySelector("#sidebar");
         this.#content = document.querySelector("main")
-        this.handleClickEvents();
-        login
-    }
+      const model = `<section class="election-container"> </section>`;
 
-    handleClickEvents() {
-        this.#aside.addEventListener("click", (e)=>{
+        // charging stats data into main
+        
+        // handling clic events
+        this.handleClickEvents();
+        // login
+    }
+    
+    async handleClickEvents() {
+        const page = await statistics.render()
+        this.#content.appendChild(page);
+        this.#aside.addEventListener("click", async (e)=>{
             if(e.target.classList.contains("menu-link")){
 
                 const link = e.target;
 
                 this.#content.innerHTML = " ";
+
+                const prev = link.closest("nav").querySelector(".active")
+
+                prev.classList.remove("active")
+
+                link.classList.add("active")
+
+                console.log(link.classList)
                 
                 if(link.id == "statistics"){
-                    this.#content.appendChild(statistics.render())
+                    const page = await statistics.render();
+                    this.#content.appendChild(page)
                 }
 
                 if(link.id == "poll"){

@@ -26,6 +26,18 @@ class UsersController extends ControllersParent{
         return $users; 
     }
 
+    public function getActiveUsers():array{
+        $users =[];
+
+        foreach ($this->getAll() as $key => $value) {
+            if($value->getStatus() == "active"){
+                $users[] = $value;
+            }
+        }
+
+        return $users;
+    }
+
     public function getUserById(int $id):User|bool{
         foreach ($this->getAll() as $key => $user) {
             if($user->getId()== $id){
@@ -35,6 +47,12 @@ class UsersController extends ControllersParent{
         return false;
     }
 
+    /**
+     * return the user that his mail is mail and matricule
+     * @param string $matricule
+     * @param string $email
+     * @return \Dls\Evoting\models\User|bool
+     */
     public function getUserByMailMatricule(string $matricule, String $email):User|bool{
         foreach ($this->getAll() as $key => $user) {
             if($user->getMatricule() == $matricule && $user->getEmail() == $email) {
@@ -90,6 +108,18 @@ class UsersController extends ControllersParent{
 
     public function isAdmin(User $user):bool{
         return $user->isAdmin();
+    }
+
+    /**
+     * return the statistitcs of the users
+     * @return void
+     */
+    public function getStats():array{
+        return [
+            "users"=>count($this->getAll()), 
+            "activeUsers"=>count($this->getActiveUsers()), 
+            "inactiveusers"=>count($this->getAll()) - count($this->getActiveUsers()),
+        ];
     }
 
 }
