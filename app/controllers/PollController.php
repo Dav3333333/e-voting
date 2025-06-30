@@ -144,17 +144,16 @@ class PollController extends ControllersParent{
      * @param string $description
      * @return null
      */
-    public function addPoll(string $title, DateTime $date_start, DateTime $date_end, string $description):Poll|null{
+    public function addPoll(string $title, DateTime $date_start, DateTime $date_end, string $description):Poll|null|array{
+        
         if($date_start->getTimestamp() < $date_end->getTimestamp() && $date_start->getTimestamp() > $this->dateTime->getTimestamp()){
             $q = $this->database->prepare("INSERT INTO poll(title, date_start, date_end, status, description) VALUES(?,?,?,?,?)");
             $q->execute(array($title, $date_start->format("Y-m-d H:i:s"), $date_end->format("Y-m-d H:i:s"),"inactif", $description));
             $poll = $q->fetch(PDO::FETCH_ASSOC);
-            
-            var_dump($poll);
 
-            return null;
+            return ['done'];
         }
-        return null;
+        return [null, "fail"];
     }
 
     // delete methods

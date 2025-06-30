@@ -10,14 +10,15 @@ class Admin {
 
     constructor() {
         this.#aside = document.querySelector("#sidebar");
-        this.#content = document.querySelector("main")
+        this.#content = document.querySelector("main div")
       const model = `<section class="election-container"> </section>`;
 
         // charging stats data into main
         
         // handling clic events
         this.handleClickEvents();
-        // login
+        
+        this.handleDialogClickEvents();
     }
     
     async handleClickEvents() {
@@ -25,6 +26,8 @@ class Admin {
         this.#content.appendChild(page);
         this.#aside.addEventListener("click", async (e)=>{
             if(e.target.classList.contains("menu-link")){
+
+                let page = null;
 
                 const link = e.target;
 
@@ -36,30 +39,40 @@ class Admin {
 
                 link.classList.add("active")
 
-                console.log(link.classList)
                 
                 if(link.id == "statistics"){
-                    const page = await statistics.render();
-                    this.#content.appendChild(page)
+                    page = await statistics.render();
                 }
-
+                
                 if(link.id == "poll"){
-                    this.#content.appendChild(scrutin.render())
+                    page = await scrutin.render()
                 }
-
+                
                 if(link.id == "setting"){
-                    this.#content.innerHTML = "settings"
+                    page =  this.#content.innerHTML = "settings"
                 }
-
+                
                 if(link.id == "users"){
-                    this.#content.appendChild(users.render())
+                    page = await users.render()
+                }
+                
+                if(link.id == "logout"){
+                    page = awaitthis.#content.innerHTML = "logout"
                 }
 
-                if(link.id == "logout"){
-                    this.#content.innerHTML = "logout"
-                }
+                this.#content.appendChild(page)
             }
             // console.log(e.target.classList.contain);
+        })
+    }
+
+    // for all the dialog handle the close fonction
+    handleDialogClickEvents(){
+        const dialog = document.querySelector("dialog"); 
+        dialog.addEventListener("click", (e)=>{
+            if(e.target.id == "close-dialog" || e.target.id == "cancel"){
+                dialog.close();
+            }
         })
     }
 }

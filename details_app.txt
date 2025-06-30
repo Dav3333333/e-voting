@@ -51,3 +51,15 @@ to be done:
 
 the part of enrollement
     it must be a class controller and  we must have a table for it with in the (userId, pollId, date)
+
+
+
+
+
+
+
+
+
+
+
+fait moi alors une div html avec son style, et ceci va contenir le le titre du scrutin, la description, la date que ca se passera, le jours restant, le poste, la posibilite d'ajouter un post, les candidat pour chaque post, la posibiliter d'ajouter, de supprimer ou de modifier  un post, la posibiliter dajouter ou de supprimer des candidat pour un post donc aussi la gestion de candidature soit confimer ou rejeter la candidature,....  

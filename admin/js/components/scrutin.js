@@ -2,14 +2,30 @@ import { api } from "../libs/api.js";
 
 class Scrutin{
 
-    #container
+    #container; 
+    #dialog
 
     constructor(){
-        this.#container = document.createElement("div")
+        this.#container = document.createElement("div"); 
+        this.#dialog = document.querySelector("dialog");
+
+        this.#handleClickEvents();
     }
 
-    async #getPolls(){
-      const data = await api.get("poll"); 
+    #handleClickEvents(){
+      this.#container.addEventListener("click", (e)=>{
+
+        const target = e.target;
+
+        console.log(target)
+
+        if(target.id == "election-add-poll"){
+          this.#dialog.innerHTML = ""; 
+          this.#dialog.appendChild(this.formAddPoll());
+          this.#dialog.showModal();
+        }
+
+      });
     }
 
     formAddPoll(){
@@ -22,18 +38,39 @@ class Scrutin{
 
       form.classList.add("election-form");
 
-      form.innerHTML = `<input type="text" class="input" placeholder="Titre du scrutin" required />
-                            <textarea class="textarea" placeholder="Description du scrutin" rows="3"></textarea>
+      form.innerHTML = `<input type="text" class="input" name="title" placeholder="Titre du scrutin" required />
+                            <textarea class="textarea" name="description" placeholder="Description du scrutin" rows="3"></textarea>
 
                             <label class="label" for="start-date">Date de début</label>
-                            <input type="date" id="start-date" class="input" required />
+                            <input type="datetime-local" name="date_start" id="start-date" class="input" required />
 
                             <label class="label" for="end-date">Date de fin</label>
-                            <input type="date" id="end-date" class="input" required />
+                            <input type="datetime-local" name="date_end" id="end-date" class="input" required />
 
                             <button type="submit" class="btn btn-primary">Créer le scrutin</button>
-                        `      
+                        `; 
 
+      // submit listener
+
+      form.addEventListener("submit", async(e)=>{
+        e.preventDefault(); 
+        const formData =new FormData(form);
+        formData.append("user_id", 1);
+        console.log(formData);
+        
+        const rep = api.post("poll", formData); 
+
+        rep.then((data)=>{
+          if(rep.message[1] == "done"){
+            form.querySelector("textarea").value = ""; 
+          }
+        })
+
+      });
+                        
+      formContainer.appendChild(form); 
+
+      return formContainer;
     }
 
 
@@ -43,17 +80,21 @@ class Scrutin{
       const containerList = document.createElement("div");
 
       containerList.classList.add("election-list-section");
-      containerList.innerHTML = `<h2 class="text-title">Scrutins existants</h2>`;
+      // create a add scrutin button and the title element form the scrutin element
+      containerList.innerHTML = `<div class="election-head"><h2 class="text-title">Scrutins</h2> <button id="election-add-poll" class="btn btn-success">NOUVEAU</button> </div>`;
 
       const ps = api.get("polls"); 
       ps.then((data)=>{
-        console.log(data)
         data.message.forEach(poll => {
           containerList.insertAdjacentHTML("beforeend", this.renderPoll(poll))
         });
       });
 
       return containerList;
+
+    }
+
+    async renderPollDisplay(){
 
     }
 
@@ -67,7 +108,6 @@ class Scrutin{
       const status = poll.status; 
       const posts = poll.posts
 
-      console.log(posts.length);
 
       const model = `
           <div class="election-card" id=${id}>

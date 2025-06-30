@@ -84,7 +84,7 @@ class Controller {
     public function getPolls():array{
         return [
             "status"=>"success", 
-            "message"=>$this->pollController->getAll()
+            "message"=>array_reverse($this->pollController->getAll())
         ];
     }
 
@@ -95,14 +95,35 @@ class Controller {
         ];
     }
 
-    public function addPoll(User $user, string $title, DateTime $date_start, DateTime $date_end, string $description):array{
-        return ($this->usersController->isUserExist($user) && $this->usersController->isAdmin($user))? [
-            "status"=> "success", 
-            "message"=>$this->pollController->addPoll($title, $date_start, $date_end, $description),
-        ]: [
-            "status"=> "fail", 
-            "message"=>"you are not and admin", 
-        ];
+    public function addPoll():array{
+
+        if(isset($_POST, $_POST["title"], $_POST["date_start"], $_POST["description"], $_POST["date_end"], $_POST["user_id"])){
+            $title = $_POST["title"]; 
+            $description = $_POST["description"];
+            $date_start = new DateTime(str_replace("T", " ", $_POST["date_start"])); 
+            $date_end = new DateTime(str_replace("T", " ", $_POST["date_end"]));
+            $userId = $_POST["user_id"];
+
+            if(!empty($title) && !empty($description) && !empty($date_start) && !empty($date_end) && !empty($userId)){ 
+            
+                $user = $this->usersController->getUserById($userId);
+                return ($this->usersController->isUserExist($user) && $this->usersController->isAdmin($user))? [
+                    "status"=> "success", 
+                    "message"=>$this->pollController->addPoll($title, $date_start, $date_end, $description),
+                ]: [
+                    "status"=> "fail", 
+                    "message"=>"you are not and admin", 
+                ];
+            }
+
+        }
+        
+        return [
+               "status"=>"fail", 
+               "message"=> "elements not fulfied", 
+               "data"=>$_POST,
+          ];
+
     }
 
     // vote methods

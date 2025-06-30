@@ -8,14 +8,14 @@ class Statistics{
         this.#container = document.createElement("div")
         this.#container.classList.add("cards")
         
-        this.#getstats();
+    
 
         this.#handleClickEvents();
     }
 
     async #getstats(){
       try {
-            const data = await api.get("statisctis"); // Attention à l'orthographe ici !
+            const data = await api.get("statistics"); // Attention à l'orthographe ici !
             return data;
         } catch (err) {
             console.error("Erreur lors de la récupération des statistiques :", err);
@@ -25,13 +25,12 @@ class Statistics{
 
     #handleClickEvents(){
         this.#container.addEventListener("click", (e)=>{
-            console.log(e);
+            // console.log(e);
         })
     }
 
     async render(){
       const data = await this.#getstats();
-        console.log(data);
 
         if (!data) {
             this.#container.innerHTML = "<p>Erreur lors du chargement des statistiques.</p>";

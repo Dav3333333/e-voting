@@ -21,14 +21,12 @@ class Api {
         
     }
 
+    /** mus have a formData object to success */
     async post(endpoint, postData){
         try {
             const rep = await fetch(`${this.#baseUrl}${endpoint}`, {
                 method:"POST", 
-                headers:{
-                    "Content-Type":"application/json"
-                }, 
-                body:JSON.stringify(postData)
+                body:postData
             });
 
             const data = rep.json(); 
@@ -38,6 +36,7 @@ class Api {
                 `{fail:true, error:${error}}`
             );
         }
+
     }
 
 }

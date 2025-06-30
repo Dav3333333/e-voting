@@ -27,6 +27,11 @@
 
   <main>
     
+    <div></div>
+    
+    <dialog id="close-dialog" class="dialog">
+  
+    </dialog>
   
   </main>
   <script src="./js/js.js"></script>

@@ -1,6 +1,8 @@
 <?php
 namespace Dls\evoting\Api;
 
+use DateTime;
+
 require_once(__DIR__ . '/../vendor/autoload.php');
 
 
@@ -50,6 +52,11 @@ class Api
         return json_encode($this->controller->getPoll($id));
     });
 
+    // add a poll and informations required are userId, title, description, date_start, date_end
+    $this->add_roote("POST", "poll", function (){
+          return json_encode($this->controller->addPoll());
+    });
+
    }
 
    private function usersEnpoints(){
@@ -74,7 +81,7 @@ class Api
    }
 
    private function statsEndPoints(){
-     $this->add_roote("get", "statisctis", function(){
+     $this->add_roote("get", "statistics", function(){
           return json_encode($this->controller->getStatistics());
      });
    }

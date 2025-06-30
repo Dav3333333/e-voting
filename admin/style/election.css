@@ -19,6 +19,11 @@
   box-sizing: border-box;
 }
 
+.election-list-section .election-head{
+  display: flex;
+  justify-content: space-between;
+}
+
 .election-form {
   display: flex;
   flex-direction: column;
