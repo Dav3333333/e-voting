@@ -1,0 +1,15 @@
+{
+    "name": "dls/evoting",
+    "description": "evoting-app",
+    "autoload": {
+        "psr-4": {
+            "Dls\\Evoting\\": "app/"
+        }
+    },
+    "authors": [
+        {
+            "name": "dav-lusenge"
+        }
+    ],
+    "require": {}
+}

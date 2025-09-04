@@ -1,0 +1,65 @@
+EVOTING APP 
+
+Work flow of the app: 
+
+USER WORK FLOW
+- Create user count (done)
+    - confirm his identity by comming with his card to register it all so
+- login 
+    - login with his card, or the mail and password
+
+- vote 
+    - He can see all the poll, but he can get access if the admin authorized him 
+      and the state of the poll is available to vote
+    - if the the status if active than the vote is available else not
+
+        - return all the candidate to him
+        - so he chose one candidate
+
+- seing result
+    - the user can only see the result of the poll that he got authorisation from the admin
+
+
+ADMIN WORK FLOW
+
+- create count
+    - create a user count and so the supper admin name him the admin
+
+- user count management: 
+    - can delete a user count, 
+    - can suspend a user count
+
+- Poll management 
+    - can creat poll 
+    - can add post to a pool 
+    - can associete user as candidate to a post of a poll
+    - can change the state of the pool 
+    - can delete a pool
+
+- vote management 
+    - can set the state of a poll to active to make the vote possible and accessible
+    - can set the state of a poll to inactif stop the vote and make the result ready
+
+
+------------------------------------------ to do ----------------------------
+
+
+to be done: 
+    - write a php function that return all the global stats polls, users, post, result, participation, last moths active count, ..., and put the into statistics page
+    - fetch the user from the api and display them and allso displays some stats of users page like the totale of all the users
+
+
+the part of enrollement
+    it must be a class controller and  we must have a table for it with in the (userId, pollId, date)
+
+
+
+
+
+
+
+
+
+
+
+fait moi alors une div html avec son style, et ceci va contenir le le titre du scrutin, la description, la date que ca se passera, le jours restant, le poste, la posibilite d'ajouter un post, les candidat pour chaque post, la posibiliter d'ajouter, de supprimer ou de modifier  un post, la posibiliter dajouter ou de supprimer des candidat pour un post donc aussi la gestion de candidature soit confimer ou rejeter la candidature,....  

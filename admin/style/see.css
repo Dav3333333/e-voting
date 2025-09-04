@@ -1,0 +1,110 @@
+.scrutin-container {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 25px;
+    background: #f9f9f9;
+    border-radius: 12px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    font-family: sans-serif;
+  }
+  
+  .scrutin-title {
+    font-size: 16px;
+    color: #2c3e50;
+  }
+
+  .scrutin-title .back-to-news{
+    margin-right: 20px;
+    cursor: pointer;
+  }
+  
+  .scrutin-description {
+    font-size: 12px;
+    color: #555;
+    margin-bottom: 10px;
+    padding: 8px;
+    background: #fff;
+  }
+  
+  .scrutin-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  
+  .posts-section {
+    margin-top: 20px;
+  }
+  
+  .post-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .add-post-btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  
+  .post-card {
+    background: #ffffff;
+    padding: 15px;
+    border-radius: 10px;
+    margin-top: 15px;
+    border: 1px solid #ddd;
+  }
+  
+  .post-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .post-actions button {
+    margin-left: 5px;
+    border: none;
+    background: none;
+    cursor: pointer;
+  }
+  
+  .candidates-section {
+    margin-top: 15px;
+  }
+  
+  .candidate-list {
+    list-style: none;
+    padding: 0;
+    margin: 10px 0;
+  }
+  
+  .candidate-list li {
+    background: #ecf0f1;
+    padding: 10px;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .candidate-actions button {
+    margin-left: 5px;
+    border: none;
+    background: none;
+    cursor: pointer;
+  }
+  
+  .add-candidate-btn {
+    margin-top: 10px;
+    padding: 6px 10px;
+    background: #2ecc71;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+  }

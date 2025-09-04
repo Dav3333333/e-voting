@@ -1,0 +1,7 @@
+
+
+------------------- LES END POINTS --------------------------------
+le code dans l'api pour rechercher les utilisateur qui ne sont pas encore les 
+candidat sur un poste dans un structin. 
+
+poll/avaible/candidate/{idPoll}

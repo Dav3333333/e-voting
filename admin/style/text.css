@@ -1,0 +1,48 @@
+.text-thin {
+  font-weight: 100;
+}
+
+.text-small{
+  font-size: 0.7rem;
+}
+
+.text-large {
+  font-size: 1.5rem;
+}
+
+.text-medium--size{
+  font-size: 0.9rem;
+}
+
+.text-light {
+  font-weight: 300;
+}
+
+.text-regular {
+  font-weight: 400;
+}
+
+.text-medium {
+  font-weight: 500;
+}
+
+.text-bold {
+  font-weight: 700;
+}
+
+
+.text-title {
+  font-size: 2rem;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.hidden{
+  display: none;
+}
+
+.show-log{
+  padding: 0.2rem;
+}

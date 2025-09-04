@@ -1,0 +1,27 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f4f6f8;
+  color: #333;
+}
+main {
+  margin-left: 200px;
+  padding: 2rem;
+  padding-top: 80px; /* pour éviter que le contenu passe sous le header */
+}
+
+@media (max-width: 768px) {
+  #sidebar {
+    transform: translateX(-100%);
+  }
+  #sidebar.active {
+    transform: translateX(0);
+  }
+  main {
+    margin-left: 0;
+  }
+}

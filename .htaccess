@@ -1,0 +1,8 @@
+RewriteEngine On
+
+# Ne pas réécrire si le fichier ou dossier existe
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Redirige toute URL de /api/... vers app/api.php
+RewriteRule ^api/.*$ app/api.php [QSA,L]
