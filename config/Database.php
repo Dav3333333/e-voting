@@ -12,6 +12,7 @@ class Database
 
         $host = "localhost";
     
+        // $db_name = "evoting_new";
         $db_name = "evoting";
 
         $db_user = "root"; 

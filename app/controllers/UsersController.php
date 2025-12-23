@@ -20,6 +20,8 @@ class UsersController extends ControllersParent{
                 email: $user["email"],
                 matricule: $user["matricule"],
                 RFID: $user["rfid"],
+                has_image: $user["has_image"],
+                imageName: $user["image_name"],
                 isAdmin: $user["is_admin"],
                 status: $user["status"],
             );
@@ -39,6 +41,8 @@ class UsersController extends ControllersParent{
                 email: $user["email"],
                 matricule: $user["matricule"],
                 RFID: $user["rfid"],
+                has_image: $user["has_image"],
+                imageName: $user["image_name"],
                 isAdmin: $user["is_admin"],
                 status: $user["status"],
             );
@@ -140,6 +144,114 @@ class UsersController extends ControllersParent{
             "activeUsers"=>count($this->getActiveUsers()), 
             "inactiveusers"=>count($this->getAll()) - count($this->getActiveUsers()),
         ];
+    }
+
+    public function getUserImage(User $user){
+        
+        // read file to send
+        
+        $path = "images/users/";
+        
+        
+        if($user->getImageName() == null){
+            $path .= basename("default-image.png");
+        }else{
+            $path .= basename($user->getImageName());
+        }
+        
+
+        $mime = mime_content_type($path);
+
+        // defining headers
+        header('Content-Type: '.$mime);
+        // header('Content-Disposition: inline; filename="image.png"');
+        header('Cache-Control: no-cache, no-store, must-revalidate');
+        header('Pragma: no-cache');
+        header("Content-Length:".filesize($path));
+        header('Expires: 0');
+
+        readfile($path);
+        exit;
+    }
+
+    /**
+     * return the user image file
+     * @param User $user
+     * @param mixed $file
+     * @return bool
+     */
+    public function uploadUserImage(User $user, $file): bool{
+        $uploadDir = __DIR__ . "/../../app/images/users/";
+        if (!file_exists($uploadDir)) mkdir($uploadDir, 0777, true);
+
+        // Vérifie MIME
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime = finfo_file($finfo, $file["tmp_name"]);
+        finfo_close($finfo);
+        $allowed = ["image/jpeg", "image/png", "image/gif"];
+        if (!in_array($mime, $allowed)) return false;
+
+        // Nom unique
+        $ext = pathinfo($file["name"], PATHINFO_EXTENSION);
+        $filename = substr(md5($user->getEmail()), 0, 8) . "_" . uniqid("img_") . "." . $ext;
+        $destination = $uploadDir . $filename;
+
+        if (move_uploaded_file($file["tmp_name"], $destination)) {
+            $q = $this->database->prepare("UPDATE users SET has_image = ?, image_name = ? WHERE id = ?");
+            return $q->execute([1, $filename, $user->getId()]);
+        }
+
+        error_log("Upload failed for {$file['name']} → {$destination}");
+        return false;
+    }
+
+    /**
+     * create new Users from the csv file uplaodes
+     * @param mixed $handle
+     * @return array{message: string, status: string}
+     */
+    public function createUsersFromCvsFile($handle):array{
+        try {
+            //code...
+            $header = fgetcsv($handle);
+    
+            if ($header === false) return ['status'=>'fail', 'message'=>'le fichier ne contient aucune donnes']; 
+            
+            $data = [];
+            while (($row = fgetcsv($handle)) !== false) {
+                if (count($row) !== count($header)) {
+                    continue;
+                }
+                $combined = @array_combine($header, $row);
+                if ($combined !== false) {
+                    $data[] = $combined;
+                }
+            }
+            
+            if (empty($data)) return ['status'=>'fail', 'message'=>'le fichier est vide']; 
+    
+            $needed_array_key = ['name'=>'', 'matricule'=>'','email'=>'','rfid'=>''];
+    
+            // if file header match the needed keys
+            $keys_diff = array_diff_key($needed_array_key, $data);
+            if(!empty($keys_diff) && count($keys_diff) > 4)
+                return ['status'=>'fail', 'message'=>'le fichier doit contenir les colonnes de : name, maricule, email ,rfid'];
+    
+        
+            // adding users using create user function
+            foreach ($data as $key => $value) {
+                if($this->isUserMailExist($value['email'], $value['matricule'])) continue;
+    
+                $this->createUser($value['matricule'], $value['email'], $value['name'], $value['rfid']); 
+            }
+    
+            return [
+                'status'=> 'success', 
+                'message'=>'ajout reussi'
+            ];
+        } catch (\Throwable $th) {
+            return array($th);
+        }
     }
 
 }

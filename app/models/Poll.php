@@ -59,10 +59,29 @@ class Poll implements JsonSerializable
 
     /**
      * the number of days before the poll start
+     * @var array
      */
     private array $dayLeft;
     
-    public function __construct(int $id, String $title, DateTime $date_start, DateTime $date_end, string $status, string $description){
+    /**
+     * the cards of this poll, false if is not in cardMode, empty array if emptymode
+     * @var array|bool
+    */
+    private array|bool $card_data;
+
+    /**
+     * true is the pull is in card mode, false if not
+     * @var bool
+     */
+    private bool $in_card_mode;
+
+    /**
+     * true if for this poll the user 
+     * @var bool
+     */
+    private bool $card_user_link_mode;
+    
+    public function __construct(int $id, String $title, DateTime $date_start, DateTime $date_end, string $status,string $description, bool $in_card_mode, bool $card_user_link_mode){
         $currenDate = new DateTime();
         if ($date_end->getTimestamp() >= $date_start->getTimestamp()) {
             $this->id = $id;
@@ -72,6 +91,14 @@ class Poll implements JsonSerializable
             $this->status = $status;
             $this->description = $description;
             $this->posts_data = [];
+            $this->in_card_mode = $in_card_mode;
+            $this->card_user_link_mode = $card_user_link_mode;
+
+            if($this->in_card_mode){
+                $this->card_data = [];
+            }else{
+                $this->card_data = false;
+            }
 
             $diffDates = $currenDate->diff($date_start, absolute:true);
 
@@ -107,6 +134,10 @@ class Poll implements JsonSerializable
     public function get_posts(): array { return $this->posts_data; }
 
     public function getDayLeft():array{return $this->dayLeft;}
+
+    public function getInCardMode():bool{return $this->in_card_mode;}
+
+    public function getIsCard_user_link_mode():bool{ return $this->card_user_link_mode;}
     
     public function setTitre(?string $titre): void{
         $this->title = $titre;
@@ -118,6 +149,17 @@ class Poll implements JsonSerializable
 
     public function equals(Poll $poll){
         return $this->getId() === $poll->getId();
+    }
+
+    private function getCards():array|bool{
+        return $this->card_data;
+    }
+
+    
+    public function getPollModeString():string{
+        if ($this->getInCardMode()) return 'card_mode';
+        if ($this->getIsCard_user_link_mode()) return "card_user_link_mode"; 
+        return null;
     }
 
     public function __toString(): string { return $this->title; }
@@ -132,6 +174,8 @@ class Poll implements JsonSerializable
             "status"=> $this->status,
             "dayBefore"=> $this->dayLeft,
             "posts"=> $this->get_posts(),
+            // false if not in card mode, list objet of card if in card mode
+            "cardData"=>$this->getCards(),
         ];
     }
 

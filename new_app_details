@@ -1,0 +1,23 @@
+
+ecrir le code de la methode: 
+- la methode pour generer le pdf des resultat (done)
+- la methodeb pour voteUserCodeMode dans le voteCOntroller 
+- la methode pour generer le bultin de vote deja enregistrer, 
+
+
+
+
+la recuperation des donnees pour le vote des etudiant, 
+------------------------------------------------------
+
+On va passer par le formulaire googleforms 
+Les donnees a recuperer a apartir du formulaire sont: 
+- Le noms
+- Le matricule 
+- La promotion 
+- la falculte ( surtout le vote sera par factulte)
+
+dans le fichier comme ca se prend par question avant d'updload on va chaque fois changer afin de faire que ca marche avec 
+parque nous aurions des informetion importante qui leurs titre doit marhe avec le noms des colones dans les tables 
+
+la solution que je trouve ce que on va modifier les noms des champs quand on importe le fichier csv pour que cela s'adapte les colones de la table users 

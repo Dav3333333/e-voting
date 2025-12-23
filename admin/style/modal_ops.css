@@ -1,0 +1,43 @@
+/* Modal Ops styles */
+.evops-modal-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.45);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:2147483647 !important;
+}
+.evops-modal{
+  width:clamp(260px,40vw,520px);
+  background:#fff;
+  border-radius:8px;
+  padding:20px;
+  box-shadow:0 8px 30px rgba(0,0,0,0.25);
+  text-align:left;
+  font-family:inherit;
+}
+.evops-modal-icon{height:36px;width:36px;border-radius:50%;margin-bottom:8px}
+.evops-modal-title{margin:0 0 8px 0;font-size:1.1rem}
+.evops-modal-message{margin-bottom:16px;color:#222}
+.evops-modal-actions{display:flex;gap:8px;justify-content:flex-end}
+.evops-modal-btn{padding:8px 12px;border-radius:6px;border:1px solid transparent;background:#f0f0f0;cursor:pointer}
+.evops-modal-btn.primary{background:#1e88e5;color:#fff}
+
+/* Variants */
+.evops-modal-success .evops-modal-icon{background:#e6f4ea;border:2px solid #37a669}
+.evops-modal-success .evops-modal-title{color:#137a3f}
+.evops-modal-fail .evops-modal-icon{background:#fdecea;border:2px solid #d64545}
+.evops-modal-fail .evops-modal-title{color:#a12b2b}
+.evops-modal-warning .evops-modal-icon{background:#fff7e6;border:2px solid #f0b429}
+.evops-modal-warning .evops-modal-title{color:#7a5a00}
+.evops-modal-confirm .evops-modal-icon{background:#eef6ff;border:2px solid #1976d2}
+.evops-modal-confirm .evops-modal-title{color:#0b63b7}
+
+/* Button color tweaks per variant */
+.evops-modal-success .evops-modal-btn.primary{background:#2e8b57}
+.evops-modal-fail .evops-modal-btn.primary{background:#c62828}
+.evops-modal-warning .evops-modal-btn.primary{background:#f0a500}
+.evops-modal-confirm .evops-modal-btn.primary{background:#1976d2}
+
+.evops-modal-btn:focus{outline:2px solid rgba(0,0,0,0.08)}

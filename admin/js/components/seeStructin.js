@@ -1,5 +1,6 @@
 import { api } from "../libs/api.js";
 import { func } from "./commonFunc.js";
+import { pdfPrint } from "../libs/printTask.js";
 
 
 class See{
@@ -33,8 +34,8 @@ class See{
                 const model = `<li class="candidate-component" id="${cand.user_id}">
                 ${cand.name}
                 <div class="candidate-actions">
-                  <button class="confirm-btn">✅ Confirmer</button>
-                  <button class="reject-btn">❌ Rejeter</button>
+                  <!--<button class="confirm-btn">✅ Confirmer</button>-->
+                  <button class="reject-btn">❌ Rejeter candidature</button>
                 </div>
               </li>`;
 
@@ -55,8 +56,8 @@ class See{
                             <div class="post-title">
                                 <strong>${post.postName}</strong>
                                 <div class="post-actions">
-                                <button class="edit-btn">✏️</button>
-                                <button class="delete-btn">❌</button>
+                                <!--<button class="edit-btn">✏️</button>
+                                <button class="delete-btn">❌</button>-->
                                 </div>
                             </div>
                         
@@ -81,16 +82,20 @@ class See{
             return data
         });
 
+        console.log(poll);
+
         const title = poll.message.title; 
         const descrip = poll.message.description;
         const dateStart = func.reformatPhpDate(poll.message.dateStart.date).trim(" ");
         const dateEnd = func.reformatPhpDate(poll.message.dateEnd.date).trim(" ");
+        const statDb = poll.message.status;
         const status = (poll.message.status == "passed")? "Temps Expirer" : "Jour J - "+poll.message.dayBefore.days;
+        const cardData = poll.message.cardData;
 
         let postData = (poll.message.posts.length > 0)? this.#renderPostPollSection(poll.message.posts) : `<div class="text-center">Pas de postes pour ce scrutin</div>` ;
 
         const model = `<div class="scrutin-container" id=${idPoll}>
-        <h2 class="scrutin-title">
+        <h2 class="scrutin-title" style="display:flex; justify-content:space-between;">
             <button class="back-btn">← Retour</button>
             <span>${title}</span>
             <button id="refresh-see-pool">🔄️</button>
@@ -100,7 +105,7 @@ class See{
         <div class="scrutin-info">
           <span class="text-thin text-medium--size"><strong>Date debut :</strong><span class="text-small"> ${dateStart} </span></span>
           <span class="text-thin text-medium--size"><strong>Date fin :</strong><span class="text-small"> ${dateEnd} </span></span>
-          <span class="text-thin text-medium--size">${status}</span>
+          <span class="text-thin text-medium--size">${statDb}</span>
         </div>
 
         <div class="posts-section">
@@ -114,9 +119,17 @@ class See{
 
         </div>
         <div class="structin-actions">
-            <button class="btn btn-success" id="start-poll">Démarrer le scrutin</button>
-            <button class="btn btn-danger" id="end-poll">Clore le scrutin</button>
+            <button ${statDb=="in_progress"?"class='btn btn-danger' id='end-poll'":"class='btn btn-success' id='start-poll'"} >${statDb == "in_progress"?"TERMINER LE SCRUTIN":"DÉMARRER LE SCRUTIN"}</button>
+            ${statDb=="in_progress"?"<button id='Authorized result'>Autorisez acces resultat</button>":""}
+            ${Array.isArray(cardData)  == false?
+                `<button class="btn btn-success card-mode" id="access-demand">Passe au mode Vote-ticket</button>`
+                :`<button class="btn btn-success card-mode" id="card-print">Imprimer Les Ticket</button>
+                  <button class="btn btn-success card-mode" id="card-download">Telecharger Les Ticket</button>  `}
         </div>
+
+        <div class="dangerous-actions" style="margin-top:16px; padding:8px;">
+            <h3>Actions dangereux</h3>
+            <button class="btn btn-danger delete-card" id="delete-card">Supprimer le strutin</div>
       </div>`;
       return model;
     }

@@ -31,6 +31,14 @@
     justify-content: space-between;
     margin-bottom: 20px;
   }
+
+  .structin-actions{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 4px;
+
+  }
   
   .posts-section {
     margin-top: 20px;
@@ -108,3 +116,8 @@
     border-radius: 6px;
     cursor: pointer;
   }
+
+.btn-danger{
+  background-color: rgb(236, 68, 68);
+  color: white;
+}

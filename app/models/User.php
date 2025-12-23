@@ -21,16 +21,22 @@ class User implements JsonSerializable
 
     private String $RFID;
 
+    private bool $has_image;
+
+    private string|null $imageName;
+
     private String $status; 
 
     private bool $isAdmin;
 
-    public function __construct(int $id, String $name, String $email, String $matricule, String $RFID,bool $isAdmin, String $status) {
+    public function __construct(int $id, String $name, String $email, String $matricule, String $RFID,bool $has_image ,string|null $imageName,bool $isAdmin, String $status) {
         $this->id = $id;
         $this->name = $name; 
         $this->email = $email;
         $this->matricule = $matricule;
         $this->RFID = $RFID;
+        $this->has_image = $has_image;
+        $this->imageName = $imageName;
         $this->isAdmin = $isAdmin;
         $this->status = $status;
     }
@@ -69,6 +75,14 @@ class User implements JsonSerializable
 
     public function isAdmin():bool{
         return $this->isAdmin;
+    }
+
+    public function hasImage():bool{
+        return $this->has_image;
+    }
+
+    public function getImageName():string|null{
+        return $this->imageName;
     }
 
     public function jsonSerialize():array{

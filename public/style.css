@@ -1,0 +1,259 @@
+* { box-sizing: border-box; padding: 0; margin: 0;}
+
+body {
+  font-family: Arial, sans-serif;
+  background: #f7f7f7;
+  margin: 0;
+  padding: 0;
+}
+
+header {
+  background: #2c3e50;
+  color: white;
+  padding: 1rem;
+  text-align: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+h1 {
+  margin: 0;
+}
+
+/* .card-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1vw));
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.card {
+  background: white;
+  border-radius: 10px;
+  padding: 1rem;
+  box-shadow: 0px 2px 6px rgba(0,0,0,0.1);
+  width: 100%;
+}
+
+.card h3 {
+  margin-top: 0;
+} */
+
+
+
+/* html, body {
+  height: 100%;
+  margin: 0;
+}
+
+.card-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;      /* <-- deux colonnes égales : gauche / droite 
+  gap: 1rem;
+  padding: 1rem;
+  height: 100vh;                      /* <-- toute la hauteur de l'écran 
+  align-items: stretch;               /* cartes s'étirent verticalement 
+}
+
+/* Option : si tu veux que chaque "ligne" fasse aussi la hauteur de l'écran (pour plusieurs lignes)
+   tu peux utiliser : grid-auto-rows: 100vh; mais ici on suppose 1 ligne avec 2 colonnes. */
+
+.card {
+  background: white;
+  border-radius: 10px;
+  padding: 1rem;
+  box-shadow: 0px 2px 6px rgba(0,0,0,0.1);
+  width: 100%;
+  height: 100%;               /* prend la hauteur du grid cell (donc ~100vh) */
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow: hidden;
+}
+
+/* Image : ne pas couper, s'ajuste entièrement dans le conteneur */
+.card img {
+  max-width: 100%;
+  max-height: 90%;            /* laisse de la place pour le titre/texte (ajuste si besoin) */
+  width: auto;
+  height: auto;
+  align-self: center;         /* centre l'image horizontalement */
+  object-fit: contain;        /* important : l'image est contenue sans être coupée */
+  border-radius: 8px;
+  /* Si tu veux que l'image occupe tout l'espace disponible sans crop :
+     retirer max-height et utiliser flex-grow:
+     display: block; flex: 1 1 auto; object-fit: contain; */
+}
+
+/* Forcer l'image à occuper l'espace central si tu préfères */
+.card .img-fill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 auto;
+}
+.card .img-fill img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* Titre et texte */
+.card h3 {
+  margin: 0;
+  text-align: center;
+}
+.card p {
+  margin: 0;
+  text-align: center;
+  opacity: 0.85;
+  font-size: 0.95rem;
+}
+
+/* Responsive : sur petits écrans, empile les cartes verticalement 
+@media (max-width: 800px) {
+  .card-list {
+    grid-template-columns: 1fr;   /* stacked 
+    height: auto;                 /* permettre la hauteur naturelle 
+  }
+  .card img {
+    max-height: 40vh;             /* réduit la hauteur image sur mobile 
+  }
+} */
+
+* {
+  box-sizing: border-box;
+}
+
+body, html {
+  height: 100%;
+  margin: 0;
+  background: #f3f3f3;
+}
+
+/* Conteneur principal centré */
+.container {
+  width: 90vw;   /* occupe 90% de la largeur de l’écran */
+  height: 90vh;  /* occupe 90% de la hauteur de l’écran */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+
+/* La grille principale */
+.card-list {
+  padding:8x;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr); /* ✅ 4 colonnes */
+  grid-template-rows: repeat(2, 1fr);    /* ✅ 2 lignes */
+  gap: 1rem;
+  width: 100%;
+  height: 100%;
+}
+
+/* Les cartes */
+.card {
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  text-align: center;
+}
+
+/* L’image dans la carte */
+.card img {
+  width: 100%;
+  height: 70%;           /* image occupe 70% de la carte */
+  object-fit: contain;   /* ✅ pas de coupe — image ajustée */
+  background: #fafafa;
+}
+
+/* Le titre */
+.card h3 {
+  margin: 0.5rem 0 0;
+  font-size: 1rem;
+  color: #333;
+}
+
+/* Responsive : si écran petit, on adapte */
+@media (max-width: 1000px) {
+  .card-list {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .card-list {
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(8, 1fr);
+  }
+}
+
+
+
+
+
+button {
+  margin-top: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #3498db;
+  color: white;
+  transition: background 0.2s;
+}
+
+button:hover {
+  background: #2980b9;
+}
+
+.etat {
+  font-weight: bold;
+}
+.etat.ouvert { color: green; }
+.etat.cloture { color: red; }
+.etat.attente { color: orange; }
+
+.back-btn {
+  color: white;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.candidate {
+  margin: 0.3rem 0;
+}
+
+.submit-btn {
+  display: block;
+  margin: 1rem auto;
+  font-size: 1.1rem;
+}
+
+.result-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.5rem;
+}
+
+.result-table th, .result-table td {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  text-align: center;
+}
+
+.result-table th {
+  background: #2c3e50;
+  color: white;
+}
+
+.result-table tr:nth-child(even) {
+  background: #f9f9f9;
+}
+

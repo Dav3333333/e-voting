@@ -11,7 +11,7 @@ use Dls\Evoting\models\Post;
 use Dls\Evoting\models\User;
 use Dls\Evoting\controllers\ControllersParent;
 use DateTime;
-
+use Exception;
 
 /**
  * this is the class that follow the flow of interaction with the database
@@ -26,6 +26,7 @@ class PollController extends ControllersParent{
      * @return Poll[]
      */
     public function getAll():array|Object{
+        $this->database->exec("UPDATE poll SET status = 'passed' WHERE date_end <= NOW() AND status != 'passed'");
         $pollList = [];
 
         $q = $this->database->prepare("SELECT * FROM poll");
@@ -38,9 +39,12 @@ class PollController extends ControllersParent{
                 date_start: new DateTime(datetime:$p['date_start']),
                 date_end: new DateTime(datetime:$p['date_end']), 
                 status:$p['status'], 
-                description:$p['description']);
+                description:$p['description'], 
+                in_card_mode:($p['in_card_mode']), 
+                card_user_link_mode : ($p['card_user_link_mode'])
+            );
             
-            $poll->setPosts($this->loadPostPoll($poll));
+            $poll->setPosts(is_array($this->loadPostPoll($poll)) ? $this->loadPostPoll($poll) : []);
 
             $pollList[] = $poll;
         }
@@ -48,12 +52,52 @@ class PollController extends ControllersParent{
         return $pollList;
     }
 
+    public function getAllOrderByStatus():array|Object{
+        try {
+            //code...
+            $this->database->exec("UPDATE poll SET status = 'passed' WHERE date_end <= NOW() AND status != 'passed'");
+            $pollList = [];
+    
+            $q = $this->database->prepare("SELECT * FROM poll
+                                            ORDER BY CASE status
+                                                WHEN 'in_progress' THEN 1
+                                                WHEN 'inactive' THEN 2
+                                                WHEN 'passed' THEN 3
+                                                ELSE 4
+                                            END DESC");
+            $q->execute();
+    
+            while($p = $q->fetch(PDO::FETCH_ASSOC)){
+                $poll = new Poll(
+                    id:$p['id'], 
+                    title:$p['title'],
+                    date_start: new DateTime(datetime:$p['date_start']),
+                    date_end: new DateTime(datetime:$p['date_end']), 
+                    status:$p['status'], 
+                    description:$p['description'],
+                    in_card_mode:($p['in_card_mode']), 
+                    card_user_link_mode : ($p['card_user_link_mode'])
+                );
+                
+                $poll->setPosts(is_array($this->loadPostPoll($poll)) ? $this->loadPostPoll($poll) : []);
+    
+                $pollList[] = $poll;
+            }
+            
+            return $pollList;
+        } catch (Exception $e) {
+            return $e;
+        }
+    }
+
     /**
      * loads the posts of a pool
      * @param \Dls\Evoting\models\Poll $poll
      * @return void
      */
-    private function loadPostPoll(Poll $poll):array{    
+    private function loadPostPoll(Poll $poll):array{
+        
+        
         $plist = [];
 
         $qPost = $this->database->prepare("SELECT * FROM post WHERE poll_id = ?");
@@ -117,6 +161,7 @@ class PollController extends ControllersParent{
                 $value->getStatus() == "passed"
             ){
                 $l[] = $value; 
+
             }
         }
         return $l;
@@ -150,17 +195,26 @@ class PollController extends ControllersParent{
      * @param string $description
      * @return null
      */
-    public function addPoll(string $title, DateTime $date_start, DateTime $date_end, string $description):Poll|null|array{
+    public function addPoll(string $title, DateTime $date_start, DateTime $date_end, string $description):array{
         
         if($date_start->getTimestamp() < $date_end->getTimestamp() && $date_start->getTimestamp() > $this->dateTime->getTimestamp()){
             $q = $this->database->prepare("INSERT INTO poll(title, date_start, date_end, status, description) VALUES(?,?,?,?,?)");
-            $q->execute(array($title, $date_start->format("Y-m-d H:i:s"), $date_end->format("Y-m-d H:i:s"),"inactif", $description));
-            $poll = $q->fetch(PDO::FETCH_ASSOC);
-
-            return ['done'];
+            
+            return $q->execute(array($title, $date_start->format("Y-m-d H:i:s"), $date_end->format("Y-m-d H:i:s"),"inactif", $description))?
+            [
+                'status'=>'success',
+                'message'=>'the poll has been created successfully',
+                'poll'=> $this->getPoll(intval($this->database->lastInsertId()))
+            ]: 
+             [
+                'status'=>'fail',
+                'message'=> 'an error has occured while creating the poll'
+            ];
         }
-        return [null, "fail", $date_start, $date_end,$this->dateTime,
-        $date_start->getTimestamp() > $this->dateTime->getTimestamp()];
+        return [
+            'status'=>'fail',
+            'message'=> 'the date of the start must be less than the date of the end and greater than the current date'
+        ];
     }
 
     // delete methods
@@ -170,16 +224,53 @@ class PollController extends ControllersParent{
      * @return bool|Poll|null
      */
     public function deletePoll(int $id):Poll|Bool{
-        foreach ($this->getAll() as $key => $value) {
-            if($value->getId() == $id){
-                $pool = $this->getPoll($id);
-                $q = $this->database->prepare("DELETE FROM poll WHERE id = ?");
-                
-                return $q->execute(array($id)) ? $pool: false;
-            }
-        }
+        $poll = $this->getPoll($id);
+        if($poll instanceof Poll){
+            try{
+                $this->database->beginTransaction();
 
-        return false;
+                $q1 = $this->database->prepare("DELETE FROM candidate WHERE poll_id = ?");
+                $q1->execute(array($id));
+
+                $q2 = $this->database->prepare("DELETE FROM card WHERE poll_id = ?");
+                $q2->execute(array($id));
+
+                $q3 = $this->database->prepare("DELETE FROM post WHERE poll_id = ?");
+                $q3->execute(array($id));
+
+                $q4 = $this->database->prepare("DELETE FROM voice WHERE poll_id = ?");
+                $q4->execute(array($id));
+
+                $q5 = $this->database->prepare("DELETE FROM poll WHERE id = ?");
+                $q5->execute(array($id));
+
+                $this->database->commit();
+
+                return $poll;
+            }catch(Exception $e){
+                return false;
+            }
+        }else{
+            return false;
+        }
+    }
+
+    public function setPollToCardMode(Poll $poll) :bool|null{
+        if($poll->getIsCard_user_link_mode()) return null;
+
+        $q = $this->database->prepare("UPDATE poll SET in_card_mode = 1 WHERE id = ?");
+        return $q->execute(array($poll->getId()));
+    }
+
+    public function setPollToUserCardLinkVote(Poll $poll):bool|null{
+        try {
+            if ($poll->getInCardMode()) return null;
+            // update poll data 
+            $q = $this->database->prepare("UPDATE poll SET card_user_link_mode = 1 WHERE id = ?"); 
+            return $q->execute(array($poll->getId())); 
+        } catch (\Throwable $th) {
+            throw new Exception("Setting poll to user card link exception", 1);
+        }
     }
 
     /**

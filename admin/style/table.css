@@ -50,3 +50,29 @@ button {
   background-color: #27ae60;
   color: white;
 }
+
+/* user button and form style for user section */
+.user-container{
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.error-container{
+  padding: 16px;
+  margin-bottom: 4px;
+  background-color: red;
+  color: white;
+  display: none;
+}
+
+.error-success{
+  padding: 16px;
+  margin-bottom: 4px;
+  background-color: green;
+  color: white;
+}
+
+.error-success.hidden{
+  display: none;
+}

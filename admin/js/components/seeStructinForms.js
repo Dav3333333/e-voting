@@ -1,5 +1,6 @@
 import { api } from "../libs/api.js";
 import { func } from "./commonFunc.js";
+import { modal_ops } from "./modal_ops.js";
 
 
 class SeeForms{
@@ -32,8 +33,7 @@ class SeeForms{
         let formData = new FormData(form); 
         api.post("post/add", formData).then((data)=>{
             if(data.status && data.status == "succes"){
-                form.querySelector(".show-log").innerHTML = `Ajout de ${form.querySelector(".title").value} reussi`
-                form.querySelector(".show-log").classList.remove("hidden");
+                modal_ops.showSuccesMessage("Ajout Post",`Ajout de ${form.querySelector(".title").value} reussi` );
                 form.querySelector(`.title`).value = ""
             }
         });
@@ -55,9 +55,10 @@ class SeeForms{
                     div.innerHTML = `<div class="text-center">Erreur</div>`;
                 }else{
                     data.message.forEach(user => {
+                        let endpoint = `../api/user/image/${user.id}`;
                         const model = `
                             <div class="user-item" id="${user.id}">
-                                <!--<img src="https://picsum.photos/200" alt="User Image" class="user-avatar">-->
+                                <img src='${endpoint}' alt="User Image" class="user-avatar">
                                 <span class="user-name">${user.name}</span>
                                 <button class="add-btn">Ajouter</button>
                             </div>

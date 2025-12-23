@@ -11,6 +11,7 @@ use Dls\Evoting\controllers\ControllersParent;
 use Dls\Evoting\models\Poll;
 use Dls\Evoting\models\Post;
 use Dls\Evoting\models\User;
+use Dls\Evoting\models\Card;
 
 
 class PostController extends ControllersParent{
@@ -26,13 +27,22 @@ class PostController extends ControllersParent{
         $q = $this->database->query("SELECT * FROM post");
         foreach( $q->fetchAll() as $post ){
 
-            $candQ = $this->database->prepare("SELECT c.status, u.name FROM `candidate` c LEFT JOIN `users` u ON `u`.`id` = `c`.`user_id` WHERE `c`.`post_id` = ?");
+            $candQ = $this->database->prepare("SELECT u.name, u.id, c.id as candId FROM `candidate` c LEFT JOIN `users` u ON `u`.`id` = `c`.`user_id` WHERE `c`.`post_id` = ?");
             $candQ->execute(array($post['id']));
 
             $pList[] = new Post($post['id'], $post['poll_id'], $post['post_name'], $candQ->fetchAll(PDO::FETCH_ASSOC));
         }
 
         return $pList;
+    }
+
+    public function getPostById(int $id):Post|bool{
+        foreach($this->getAll() as $post){
+            if($post->getId() == $id){
+                return $post;
+            }
+        }
+        return false;
     }
 
     /**
@@ -69,6 +79,27 @@ class PostController extends ControllersParent{
         return false;
     }
 
+    public function getAvablePostForCard(Poll $poll, Card $card):Post|array{
+        try {
+            $q = $this->database->prepare("SELECT * FROM `post` WHERE `post`.`poll_id` = ? AND `post`.`id` 
+                                            NOT IN (SELECT `voice`.`post_id` FROM `voice` WHERE `voice`.`card_code` = ? ) ORDER BY `post`.`id` LIMIT 1");
+            $q->execute(array($poll->getId(), $card->get_code_card()));
+            $p = $q->fetch(PDO::FETCH_ASSOC);
+
+            if($q->rowCount() == 0){
+                return [
+                    "status"=>"success",
+                    "rowCount"=>0,
+                ];
+            }
+
+            $post = $this->getPostById($p["id"]);
+    
+            return $post;
+        } catch (\Throwable $th) {
+            return ["status"=>"fail","error"=>$th->getMessage()];
+        }
+    }
 
     /**
      * add the post of the poll

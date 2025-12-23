@@ -104,6 +104,12 @@ main {
   background-color: #1a252f;
 }
 
+/* users image display vote*/
+.user-candidate-image{
+  width: 90%;
+  height: 0.25vh;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   #menu-toggle {
