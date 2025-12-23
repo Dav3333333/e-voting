@@ -196,10 +196,6 @@ class Controller {
 
     /**
      * write a vote for these params
-     * @param \Dls\Evoting\models\Poll $poll
-     * @param \Dls\Evoting\models\Post $post
-     * @param \Dls\Evoting\models\Candidate $candidate
-     * @param \Dls\Evoting\models\User $user
      * @return array
      */
     public function vote(Poll $poll, Post $post, Candidate $candidate, User $user):array{
