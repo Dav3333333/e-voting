@@ -1,12 +1,14 @@
 import { api } from "../../../admin/js/libs/api.js";
+import { modal_ops} from "../../../admin/js/components/modal_ops.js";
 
 class VoteController {
     constructor() {
         this.urlParams = new URLSearchParams(window.location.search);
         this.voteId = this.urlParams.get("id");
         this.mode = this.urlParams.get("c") === 'true'; // Convertit en booléen
-        this.scrutin = null;
+        this.userMode = this.urlParams.get("ulc") === 'true';
         this.container = document.getElementById("candidatsContainer");
+        this.scrutin = null;
         this.currentCardCode = null;
     }
 
@@ -21,7 +23,7 @@ class VoteController {
                 return;
             }
 
-            if (this.mode) {
+            if (this.mode || this.userMode) {
                 this.renderCardForm();
             } else {
                 this.renderVoteForm();
@@ -68,6 +70,8 @@ class VoteController {
             formData.append("poll_id", this.voteId);
 
             const validation = await api.post("vote/validate/card", formData);
+
+            console.log("Validation carte:", validation);
 
             if (validation.status === "success") {
                 this.currentCardCode = cardCode
@@ -132,16 +136,30 @@ class VoteController {
             const target = e.target;
 
             const idPost = candListCont.id;
-            let idCandidate = null; 
+            let idCandidate = null;
+            let nameCandidate = null;
+
             if(target.classList.contains("card-image") || target.classList.contains("card-name")){
                 idCandidate = target.closest(".card").id;
             }
 
+            if(target.classList.contains("card-name")) nameCandidate = target.textContent;
+
+            if (target.classList.contains("card-image")) nameCandidate = target.closest(".card").querySelector(".card-image").textContent
+
             if(target.classList.contains("card")){
                 idCandidate = target.id;
+                nameCandidate = target.querySelector(".card-name").textContent;
             }
 
-            console.log(idCandidate, idPost);
+            console.log(idCandidate, idPost, this.voteId);
+
+            if(!modal_ops.validateIntStrict(idCandidate) || !modal_ops.validateIntStrict(idPost) || !modal_ops.validateIntStrict(this.voteId)){
+                modal_ops.showFailMessage("Echec de selection", "Assurez-vous de cliquer ou toucher L'image ou le nom d'un Candidat"); 
+                return;
+            }
+
+            if(await modal_ops.showConfirm("Confirmation Vote", `Vous confirmer le choix de ${nameCandidate} pour ce scrutin ?`) == false) return;
 
             try {
                 let response;
@@ -153,20 +171,30 @@ class VoteController {
                         formData.append("poll_id", parseInt(this.voteId));
                         formData.append("post_id", parseInt(idPost));
                         formData.append("candidate_id", parseInt(idCandidate));
+                        formData.append("mode","cardmode");
                         response = await api.post("vote/cardmode", formData);
 
                         this.goNextPoll();
                     }else{
                         console.log("le cardcode n'a pas ete definie");
                     }
-                }else{
-                    // check the mode and pass to the vote
-                    const formData = new FormData();
-                    formData.append("user_id", 2); 
-                    formData.append("poll_id", parseInt(this.voteId));
-                    formData.append("post_id", parseInt(idPost));
-                    formData.append("candidate_id", parseInt(idCandidate));
-                    response = await api.post("vote", formData);
+                }
+                
+                if(this.userMode){
+                    if(this.currentCardCode != null){
+                        const formData = new FormData();
+                        // formData.append("user_id", 2); 
+                        formData.append("card_code", this.currentCardCode); 
+                        formData.append("poll_id", parseInt(this.voteId));
+                        formData.append("post_id", parseInt(idPost));
+                        formData.append("candidate_id", parseInt(idCandidate));
+                        formData.append("mode","user-link-cardmode");
+                        response = await api.post("vote/cardmode", formData);
+    
+                        this.goNextPoll();
+                    }else{
+                        console.log("le cardcode n'a pas ete definie");
+                    }
                 }
 
                 if (response && response.errors) {
@@ -175,7 +203,7 @@ class VoteController {
                 }
 
                 if (response && response.status === "success") {
-                    alert(`${response.message}`);
+                    await modal_ops.showSuccesMessage("Vote", "Vote Enregistrer Avec Success");
                     await this.goNextPoll();
                     console.log(response)
                 } else {

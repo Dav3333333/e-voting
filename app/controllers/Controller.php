@@ -102,6 +102,8 @@ class Controller {
         if (in_array($fileType, $allowedMimeTypes) || in_array($ext, $allowedExt)) {
             if (($handle = fopen($fileTmpPath, 'r')) !== false) {
                 $r = $this->usersController->createUsersFromCvsFile($handle);
+                // upload and close file 
+                // $this->usersController->uploadUsersCsvFile($fileTmpPath);
                 fclose($handle);
                 return $r;
             } else {
@@ -251,6 +253,8 @@ class Controller {
                 return [
                     "status"=>"fail",
                     "message"=>"check the id you passed",
+                    "poll"=>$poll, 
+                    "id"=>$pollId
                 ];
             }else{
                 return[
@@ -300,48 +304,55 @@ class Controller {
         }
     }
 
-    public function validateCardCodeForPoll(int $pollId, string $code_card):array|bool{
+    public function validateCardCodeForPoll(int $pollId, string $code_card, ?string $mode = null):array{
         $poll = $this->pollController->getPoll($pollId);
-        if($poll instanceof Poll){
-            if(!$poll->getInCardMode()){
-                return false;
-            }
-            $card = $this->cardController->getCardByCode($code_card);
-            
-            if($card instanceof Card){
-                if($this->cardController->isValidCardForPoll($poll, $card)){
-                    if($this->postController->getAvablePostForCard(poll:$poll, card:$card) instanceof Post){
-                        return [
-                            "status"=>"success", 
-                            "message"=>"the card is valid for this poll"
-                        ];
-                    }else{
-                        return [
-                            "status"=>"fail", 
-                            "message"=>"Carte utilisee mais valide", 
-                            "avai"=>$this->postController->getAvablePostForCard(poll:$poll, card:$card) 
-                        ];
-                    }
-                }else{
-                    return [
-                        "status"=>"fail", 
-                        "message"=>"the card is not valid for this poll"
-                    ];
-                }
-            }
-            return false;
-        }else{
-            return false;
+        if(!($poll instanceof Poll)){
+            return ["status"=>"fail", "message"=>"Unrecognized poll"];
         }
+
+        // Determine effective mode (POST override if provided)
+        if($mode !== null){
+            $m = strtolower(trim($mode));
+            $inCardMode = ($m === 'cardmode');
+            $userLinkMode = ($m === 'user-link-cardmode');
+        }else{
+            $inCardMode = $poll->getInCardMode();
+            $userLinkMode = $poll->getIsCard_user_link_mode();
+        }
+
+        if(!$inCardMode && !$userLinkMode){
+            return ["status"=>"fail", "message"=>"Le scrutin n'est pas en mode carte"];
+        }
+
+        $card = $this->cardController->getCardByCode($code_card);
+        if(!($card instanceof Card)){
+            return ["status"=>"fail", "message"=>"Carte non trouvée"];
+        }
+
+        // Validate card for poll
+        if(!$this->cardController->isValidCardForPoll($poll, $card)){
+            return ["status"=>"fail", "message"=>"the card is not valid for this poll"];
+        }
+
+        $available = $this->postController->getAvablePostForCard(poll:$poll, card:$card);
+        if($available instanceof Post){
+            return [
+                "status"=>"success",
+                "message"=>"the card is valid for this poll",
+                "post"=> $available
+            ];
+        }
+
+        return ["status"=>"fail", "message"=>"Pas de post pour ce scrutin", "avai"=> $available];
     }
 
     /**
      * 
      * set the poll in the mode of card vote
      */
-    public function setToCardMode($idPoll, $cardsNumber):array{
+    public function setToMode($idPoll, $cardsNumber, $mode):array{
 
-        if(!is_numeric($idPoll) && !is_numeric($cardsNumber)){return ["status"=>"fail", "message"=>"all must be interger"];}
+        if(!is_numeric($idPoll) && !is_numeric($cardsNumber)){return ["status"=>"fail", "message"=>"the poll's id and cardsnumber must be interger"];}
 
         $poll = $this->pollController->getPoll($idPoll);
 
@@ -361,7 +372,7 @@ class Controller {
                     ];
             }
 
-            $cardToPoll = $this->pollController->setPollToCardMode($poll);
+            $cardToPoll = $this->pollController->setPollMode(poll:$poll,mode: $mode);
 
             if(!$cardToPoll){
                 return[
@@ -402,6 +413,9 @@ class Controller {
             ];
 
             $poll = $this->pollController->getPoll((int) $idPoll);
+
+            // check existance of poll
+            if(!$poll instanceof Poll) return ['status'=>'fail', 'message'=>'Poll not found'];
 
             // generate cards for poll
             $this->cardController->generateCardForPoll($poll, $cardsNumber);
@@ -487,8 +501,8 @@ class Controller {
     }
 
     public function generatePdfTemporaryFileCardForPoll(Poll $poll){
-        if($poll instanceof \Dls\Evoting\models\Poll){
-            if(!$poll->getInCardMode()){
+        if($poll instanceof Poll){
+            if(!$poll->getInCardMode() && !$poll->getIsCard_user_link_mode()){
                 header('Content-Type: application/json');
                 http_response_code(400);
                 return json_encode([
@@ -498,7 +512,7 @@ class Controller {
             }
             try {
                 return $this->cardController->generatePdfTempFileCardForPoll($poll);
-                exit;
+                
             } catch (Exception $e) {
                 http_response_code(500);
                 header('Content-Type: application/json');
@@ -636,74 +650,74 @@ class Controller {
      * write a vote for these params
      * @return array
      */
-    public function vote():array
-    {
-        if (
-            isset($_POST['poll_id'], $_POST['post_id'], $_POST['candidate_id'], $_POST['user_id']) &&
-            is_numeric($_POST['poll_id']) &&
-            is_numeric($_POST['post_id']) &&
-            is_numeric($_POST['candidate_id']) &&
-            is_numeric($_POST['user_id'])
-        ) {
-            $poll = $this->pollController->getPoll((int)$_POST['poll_id']);
-            $post = $this->postController->getPostById((int)$_POST['post_id']);
-            $candidate = $this->candidateController->getCandidate((int)$_POST['candidate_id']);
-            $user = $this->usersController->getUserById((int)$_POST['user_id']);
+    // public function vote():array
+    // {
+    //     if (
+    //         isset($_POST['poll_id'], $_POST['post_id'], $_POST['candidate_id'], $_POST['user_id']) &&
+    //         is_numeric($_POST['poll_id']) &&
+    //         is_numeric($_POST['post_id']) &&
+    //         is_numeric($_POST['candidate_id']) &&
+    //         is_numeric($_POST['user_id'])
+    //     ) {
+    //         $poll = $this->pollController->getPoll((int)$_POST['poll_id']);
+    //         $post = $this->postController->getPostById((int)$_POST['post_id']);
+    //         $candidate = $this->candidateController->getCandidate((int)$_POST['candidate_id']);
+    //         $user = $this->usersController->getUserById((int)$_POST['user_id']);
 
-            if (
-                $poll instanceof Poll &&
-                $post instanceof Post &&
-                $candidate instanceof Candidate &&
-                $user instanceof User
-            ) {
+    //         if (
+    //             $poll instanceof Poll &&
+    //             $post instanceof Post &&
+    //             $candidate instanceof Candidate &&
+    //             $user instanceof User
+    //         ) {
 
-                if($poll->getInCardMode()){
-                    return [
-                        "status" => "fail",
-                        "message" => "Ce strutin est en mode vote avec card"
-                    ];
-                }
+    //             if($poll->getInCardMode()){
+    //                 return [
+    //                     "status" => "fail",
+    //                     "message" => "Ce strutin est en mode vote avec card"
+    //                 ];
+    //             }
 
-                if ($this->pollController->isPollPassed($poll)) {
-                    return [
-                        "status" => "fail",
-                        "message" => "Le scrutin est déjà passé"
-                    ];
-                }
+    //             if ($this->pollController->isPollPassed($poll)) {
+    //                 return [
+    //                     "status" => "fail",
+    //                     "message" => "Le scrutin est déjà passé"
+    //                 ];
+    //             }
 
-                if($this->voteController->hasVoted($poll, $post, $user)){
-                    return [
-                        "status" => "fail",
-                        "message" => "Vous avez déjà voté pour ce poste dans ce scrutin"
-                    ];
-                }
+    //             if($this->voteController->hasVoted($poll, $post, $user)){
+    //                 return [
+    //                     "status" => "fail",
+    //                     "message" => "Vous avez déjà voté pour ce poste dans ce scrutin"
+    //                 ];
+    //             }
 
-                $result = $this->voteController->vote($poll, $post, $candidate, $user);
+    //             $result = $this->voteController->vote($poll, $post, $candidate, $user);
 
-                if ($result) {
-                    return [
-                        "status" => "success",
-                        "message" => "Vote enregistré"
-                    ];
-                } else {
-                    return [
-                        "status" => "fail",
-                        "message" => "Erreur lors de l'enregistrement du vote"
-                    ];
-                }
-            } else {
-                return [
-                    "status" => "fail",
-                    "message" => "Paramètres invalides"
-                ];
-            }
-        } else {
-            return [
-                "status" => "fail",
-                "message" => "Paramètres manquants"
-            ];
-        }
-    }
+    //             if ($result) {
+    //                 return [
+    //                     "status" => "success",
+    //                     "message" => "Vote enregistré"
+    //                 ];
+    //             } else {
+    //                 return [
+    //                     "status" => "fail",
+    //                     "message" => "Erreur lors de l'enregistrement du vote"
+    //                 ];
+    //             }
+    //         } else {
+    //             return [
+    //                 "status" => "fail",
+    //                 "message" => "Paramètres invalides"
+    //             ];
+    //         }
+    //     } else {
+    //         return [
+    //             "status" => "fail",
+    //             "message" => "Paramètres manquants"
+    //         ];
+    //     }
+    // }
 
     /**
      * write a vote for these params
@@ -712,16 +726,32 @@ class Controller {
     public function voteWithUserLinkedCard():array
     {
         if (
-            isset($_POST['poll_id'], $_POST['post_id'], $_POST['candidate_id'], $_POST['user_id']) &&
+            isset($_POST['poll_id'], $_POST['post_id'], $_POST['candidate_id'], $_POST['card_code']) &&
             is_numeric($_POST['poll_id']) &&
             is_numeric($_POST['post_id']) &&
             is_numeric($_POST['candidate_id']) &&
-            is_numeric($_POST['user_id'])
+            !empty($_POST['card_code'])
         ) {
             $poll = $this->pollController->getPoll((int)$_POST['poll_id']);
             $post = $this->postController->getPostById((int)$_POST['post_id']);
             $candidate = $this->candidateController->getCandidate((int)$_POST['candidate_id']);
-            $user = $this->usersController->getUserById((int)$_POST['user_id']);
+            $card = $this->cardController->getCardByCode($_POST['card_code']);
+
+            if(!$card instanceof Card){
+                return[
+                    "status"=>"fail",
+                    "message"=>"Card non identifier"
+                ];
+            }
+
+            if(!$card->isLinkable()){
+                return[
+                    "status"=>"fail",
+                    "message"=>"Card n'est pas linkable"
+                ];
+            }
+
+            $user = $this->usersController->getUserById($card->getLinkedUser());
 
             if (
                 $poll instanceof Poll &&
@@ -729,11 +759,24 @@ class Controller {
                 $candidate instanceof Candidate &&
                 $user instanceof User
             ) {
+                if(!$card->isLinkable()){
+                return [
+                    "status"=>"fail", 
+                    "message"=>"ce card n'est pas linkable"
+                ];
+            }
 
                 if($poll->getInCardMode()){
                     return [
                         "status" => "fail",
                         "message" => "Ce strutin est en mode vote avec card"
+                    ];
+                }
+
+                if($poll->getMode() != "user-link-cardmode"){
+                    return[
+                        "status" => "fail", 
+                        "message" => "Ce srtrutin n'est pas en mode user-link-cardmode"
                     ];
                 }
 
@@ -751,7 +794,7 @@ class Controller {
                     ];
                 }
 
-                $result = $this->voteController->vote($poll, $post, $candidate, $user);
+                $result = $this->voteController->voteUserCardMode(poll:$poll, post:$post, candidate:$candidate, card:$card, user:$user);
 
                 if ($result) {
                     return [

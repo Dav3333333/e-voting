@@ -130,31 +130,38 @@ class Api
 
    private function voteEndPoint(){
      // vote action with user count
-     $this->add_roote("POST", "vote", function(){
-          if(isset($_POST, $_POST["user_id"], $_POST["poll_id"], $_POST["post_id"], $_POST["candidate_id"])){
-               $idUser = intval($_POST["user_id"]);
-               $idPoll = intval($_POST["poll_id"]);
-               $idPost = intval($_POST["post_id"]);
-               $idCandidate = intval($_POST["candidate_id"]);
-               if($idUser > 0 && $idPoll > 0 && $idPost > 0 && $idCandidate > 0){
-                    return json_encode($this->controller->vote($idUser, $idPoll, $idPost, $idCandidate));
-               }
-               return json_encode(["status"=>"fail", "message"=>"the id must be a positive integer", "data"=>$_POST]);
-          }else{
-               return json_encode(["status"=>"fail", "message"=>"you must post data {idUser, idPoll, idPost, idCandidate}", "data"=>$_POST]);
-          }
-     });
+     // $this->add_roote("POST", "vote", function(){
+     //      if(isset($_POST, $_POST["user_id"], $_POST["poll_id"], $_POST["post_id"], $_POST["candidate_id"])){
+     //           $idUser = intval($_POST["user_id"]);
+     //           $idPoll = intval($_POST["poll_id"]);
+     //           $idPost = intval($_POST["post_id"]);
+     //           $idCandidate = intval($_POST["candidate_id"]);
+     //           if($idUser > 0 && $idPoll > 0 && $idPost > 0 && $idCandidate > 0){
+     //                return json_encode($this->controller->vote($idUser, $idPoll, $idPost, $idCandidate));
+     //           }
+     //           return json_encode(["status"=>"fail", "message"=>"the id must be a positive integer", "data"=>$_POST]);
+     //      }else{
+     //           return json_encode(["status"=>"fail", "message"=>"you must post data {idUser, idPoll, idPost, idCandidate}", "data"=>$_POST]);
+     //      }
+     // });
 
-     // vote with card code
+     // vote with card code/ with user-link-mode
      $this->add_roote("POST", "vote/cardmode", function (){
           // vote action with card mode activate for a poll
-          if(isset($_POST, $_POST["card_code"], $_POST["poll_id"], $_POST["post_id"], $_POST["candidate_id"])){
+          if(isset($_POST, $_POST["card_code"], $_POST["poll_id"], $_POST["post_id"], $_POST["candidate_id"], $_POST["mode"])){
                $card_code = $_POST["card_code"];
                $idPoll = intval($_POST["poll_id"]);
                $idPost = intval($_POST["post_id"]);
                $idCandidate = intval($_POST["candidate_id"]);
+               $mode = strtolower(trim($_POST["mode"]));
                if(strlen($card_code) > 0 && $idPoll > 0 && $idPost > 0 && $idCandidate > 0){
-                    return json_encode($this->controller->voteInCardMode($card_code, $idPoll, $idPost, $idCandidate));
+                    // for cardmode
+                    if($mode == "cardmode") return json_encode($this->controller->voteInCardMode());
+
+                    // for user-link-mode
+                    if($mode == "user-link-cardmode") return json_encode($this->controller->voteWithUserLinkedCard());
+
+                    return json_encode(["status"=>"fail", "message"=>"Unkwon vote mode"]);
                }
                return json_encode(["status"=>"fail", "message"=>"the id must be a positive integer", "data"=>$_POST]);
           }else{
@@ -168,15 +175,16 @@ class Api
                if(isset($_POST, $_POST["card_code"], $_POST["poll_id"])){
                     $card_code = $_POST["card_code"];
                     $idPoll = intval($_POST["poll_id"]);
+                    $mode = isset($_POST['mode']) ? strtolower(trim($_POST['mode'])) : null;
                     if(strlen($card_code) > 0 && $idPoll > 0){
-                         return json_encode($this->controller->validateCardCodeForPoll($idPoll,$card_code));
+                         return json_encode($this->controller->validateCardCodeForPoll($idPoll,$card_code,$mode));
                     }
                     return json_encode(["status"=>"fail", "message"=>"the id must be a positive integer", "data"=>$_POST]);
                }else{
                     return json_encode(["status"=>"fail", "message"=>"you must post data {card_code, idPoll}", "data"=>$_POST]);
                }
           }catch (Exception $e){
-               return json_encode($e);
+               return json_encode(['status'=>'fail','message'=>$e->getMessage()]);
           }
      });
 
@@ -244,26 +252,72 @@ class Api
           });
 
           // go in card mode, make a pool accessible thanks to a code card
-          $this->add_roote("POST", "poll/cardmode/accessdemand", function(){
+          $this->add_roote("POST", "poll/card-mode/accessdemand", function(){
                header('Content-Type: application/json');
-               if(isset($_POST, $_POST['id_poll'], $_POST['card_number'])){
+               if(isset($_POST, $_POST['id_poll'], $_POST['card_number'], $_POST['mode'])){
                     $id_poll = $_POST['id_poll'];
                     $card_number = $_POST['card_number'];
-                    if(is_numeric($id_poll) && is_numeric($card_number)){
-                         return json_encode($this->controller->setToCardMode(idPoll: $id_poll, cardsNumber:$card_number));
-                    }else{
+                    $mode = strtolower($_POST["mode"]);
+
+                    // mode vefication
+                    if($mode != "cardmode" && $mode != "user-link-cardmode"){
+                         return json_encode([
+                              "status"=>"fail",
+                              "message"=>"Mode must be cardmode or user-link-mode",
+                              "mode" => $mode
+                         ]);
+                    }
+
+                    if(!is_numeric($id_poll) && !is_numeric($card_number)){
                          return json_encode([
                               "status"=>"fail", 
                               "message"=>"id_poll and card_number must be intergers"
-                         ]); 
+                         ]);
                     }
+
+                    return json_encode($this->controller->setToMode($id_poll, $card_number, $mode));
+                    
+                    // // for card-mode
+                    // if($mode == "cardmode"){
+                    //      // numerics params verifications
+                    //      if(is_numeric($id_poll) && is_numeric($card_number)){
+                    //           return json_encode($this->controller->setToCardMode(idPoll: $id_poll, cardsNumber:$card_number, mode:$mode));
+                    //      }else{
+                    //           return json_encode([
+                    //                "status"=>"fail", 
+                    //                "message"=>"id_poll and card_number must be intergers"
+                    //           ]); 
+                    //      }
+                    // }
+
+                    // // for user-card-linked mode
+                    // if($mode == "user-link-cardmode"){
+                    //      $data = $_POST; 
+                    //      if(!isset($data['id_poll'], $data['card_number']) && !is_int($data['id_poll']) && !is_int($data['card_number'])) return json_encode([
+                    //           'status'=>'fail', 
+                    //           'message'=>'id_poll and id_user must be sent and must be numbers'
+                    //      ]);
+                         
+                    //      return json_encode(
+                    //           $this->controller->setToUserLinkedCardMode($data['id_poll'], $data['card_number'])
+                    //      );
+                    // }
                }else{
                     return json_encode([
                          "status"=>"fail", 
-                         "message"=>"you must send the id_poll and the card_number"
+                         "message"=>"you must send the id_poll, the card_number and the mode"
                     ]);
                }
           });
+
+          
+          // $this->add_roote('POST', "poll/set-linked-card-user-mode", function(){
+               
+          // });
+          
+          //     $this->add_roote("update", "poll", function(){
+          //           return json_encode(["update"=>true])
+          //     });
 
           $this->add_roote("delete", "poll/{pollId}", function($pollId){
                if(is_numeric($pollId)){
@@ -274,23 +328,6 @@ class Api
                     "message"=>"the id must interger"
                ]);
           });
-
-          $this->add_roote('POST', "poll/set-linked-card-user-mode", function(){
-               $data = $_POST; 
-               if(!isset($data['id_poll'], $data['card_number']) && !is_int($data['id_poll']) && !is_int($data['card_number'])) return json_encode([
-                    'status'=>'fail', 
-                    'message'=>'id_poll and id_user must be sent and must be numbers'
-               ]);
-
-               return json_encode(
-                    $this->controller->setToUserLinkedCardMode($data['id_poll'], $data['card_number'])
-               );
-
-          });
-
-          //     $this->add_roote("update", "poll", function(){
-          //           return json_encode(["update"=>true])
-          //     });
      }
 
      /**

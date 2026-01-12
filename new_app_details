@@ -21,3 +21,30 @@ dans le fichier comme ca se prend par question avant d'updload on va chaque fois
 parque nous aurions des informetion importante qui leurs titre doit marhe avec le noms des colones dans les tables 
 
 la solution que je trouve ce que on va modifier les noms des champs quand on importe le fichier csv pour que cela s'adapte les colones de la table users 
+
+
+///// ----------------------------- new section new features -------------------
+
+Un defis je voulais ajouter un algotihm de rechercher pour separerer les donnes 
+lors de la creations des users avec un fichier csv,
+
+je veut que en uploadant un fiuchier que sa ajoute  un user existant bien sur a 
+un pool x ou y suivant le nom du poll exacte passer dans ce fichier la.
+
+
+//////////////////////////////////////////////////////////////////////////////////////////// une section //////////////////////////////////////
+
+alors pour y arriver je vais creer des methode suivantes: 
+- celle qui me permettra de recuperer tout les donnees dans une array a 2 dimension avec les sous arrays = n * (nombre poll trouver dans le fichier la collone de poll) 
+et au debut du tableau generale avoir le tableau qui aura tout les pool trouver dans le fichier passer
+- creer une methode qui permetrat de faire une recherche dans le la database et trouver un poll ayant un titre qui ressemble a un titre de poll donnee en paramettre de cette fonction
+- --------------- partie enrolemment au poll trouver ------------
+comme dans le systeme les emails sont uniques a chaque user, nous allons passer par le rechercher d'utilisateuur par mail lors que nous tentons 
+l'ajouter dans le system, et puis enroler le user existant au poll mais si le user n'existe pas on le creer et on l'enrole au vote
+
+- creer ou appeller la methode qui renvois tout les email existant dans le system
+- si le mail existe, alors on enrole le user au poll trouver sur sa ligne des poll 
+- si le mail n'existe pas alors on creer le user et on l'enrole a son poll si trouver dans la database aussi
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////// une section //////////////////////////////////////////////

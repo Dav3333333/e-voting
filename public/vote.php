@@ -11,6 +11,7 @@ if(!isset($_GET['id'], $_GET['c'])) die("<p> Une erreur interne a interrompu l'e
   <title>Vote Manager - Scrutin</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="./style/formcard.css">
+  <link rel="stylesheet" href="../admin/style/modal_ops.css">
 </head>
 <body>
   <header style="display: flex; justify-content: space-between; align-items: center; padding: 10px;">

@@ -43,7 +43,7 @@ class ModalOps {
      * @returns {Promise<Boolean>}
      */
     showConfirm(title = 'Confirm', message = ''){
-        return this._showModal({type: 'confirm', title, message, buttons: [{text: 'Yes', value: true, primary: true},{text: 'No', value: false}]});
+        return this._showModal({type: 'confirm', title, message, buttons: [{text: 'Oui', value: true, primary: true},{text: 'Non', value: false}]});
     }
 
     _showModal({type = 'info', title = '', message = '', buttons = []} = {}){
@@ -95,6 +95,13 @@ class ModalOps {
             const firstBtn = actions.querySelector('button');
             if (firstBtn) firstBtn.focus();
         });
+    }
+
+    validateIntStrict(value){
+        return (
+            (typeof value === "number" && Number.isInteger(value))||
+            (typeof value === "string" && /^[0-9]+$/.test(value))
+        );
     }
 }
 

@@ -2,7 +2,9 @@ import { api } from "../../../admin/js/libs/api.js";
 
 function ouvrirVote(voteId, mode) {
     // c pour cardMode
-    window.location.href = `vote.php?id=${voteId}&c=${mode}`;
+    // ulc pour user-link-cardmode
+    
+    window.location.href = `vote.php?id=${voteId}${`&c=${mode=="cardmode"?true:false}`}${`&ulc=${mode == "user-link-cardmode"?true:false}`}`;
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -23,13 +25,13 @@ document.addEventListener("DOMContentLoaded", async () => {
                      : vote.status == "in_progress" ? "ouvert" 
                      : vote.status;
 
-        const mode = Array.isArray(vote.cardData)? true: false
+        const mode = vote.mode;
         
         div.className = "card";
         div.innerHTML = `
             <h3>${vote.title}</h3>
             <p>État : <span class="etat ${status}">${status}</span></p>
-            ${status === "ouvert" ? `<button class="btn-ouvrir" data-id="${vote.id}" card-mode="${mode}">Accéder</button> 
+            ${status === "ouvert" ? `<button class="btn-ouvrir" data-id="${vote.id}" mode="${mode}">Accéder</button> 
                                     <button class="btn-result" data-id="${vote.id}">Voir resultat</button>
             ` : ""}
         `;
@@ -39,7 +41,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.querySelectorAll(".btn-ouvrir").forEach(btn => {
         btn.addEventListener("click", (e) => {
             const id = e.target.getAttribute("data-id");
-            const m = e.target.getAttribute("card-mode");
+            const m = e.target.getAttribute("mode");
             ouvrirVote(id,m);
         });
     });

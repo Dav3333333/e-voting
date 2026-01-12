@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>Vote Manager - Liste des scrutins</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="../admin/style/modal_ops.css">
 </head>
 <body>
   <header>

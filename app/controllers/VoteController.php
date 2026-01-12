@@ -60,7 +60,7 @@ class VoteController extends ControllersParent{
      * It allows a user linked to a card to vote , 
      * @return bool
      */
-    public function voteUserCodeMode(Poll $poll, Post $post, Candidate $candidate, Card $card, User $user):bool{
+    public function voteUserCardMode(Poll $poll, Post $post, Candidate $candidate, Card $card, User $user):bool{
         // check: is the user linked to the card and if card used
         if($this->hasVoted($poll, $post, $user) || !$card->isLinkable() || !$card->getLinkedUser() == $user->getId()){
             return false;

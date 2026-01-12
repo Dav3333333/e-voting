@@ -155,12 +155,21 @@ class Poll implements JsonSerializable
         return $this->card_data;
     }
 
-    
-    public function getPollModeString():string{
-        if ($this->getInCardMode()) return 'card_mode';
-        if ($this->getIsCard_user_link_mode()) return "card_user_link_mode"; 
-        return null;
+    public function hasMode():bool{
+        return $this->card_user_link_mode || $this->in_card_mode;
     }
+
+    public function getMode():string{
+        if($this->card_user_link_mode) return "user-link-cardmode";
+        if($this->in_card_mode) return "cardmode"; 
+        return "null";
+    }
+    
+    // public function getPollModeString():string{
+    //     if ($this->getInCardMode()) return 'card_mode';
+    //     if ($this->getIsCard_user_link_mode()) return "card_user_link_mode"; 
+    //     return null;
+    // }
 
     public function __toString(): string { return $this->title; }
 
@@ -176,6 +185,7 @@ class Poll implements JsonSerializable
             "posts"=> $this->get_posts(),
             // false if not in card mode, list objet of card if in card mode
             "cardData"=>$this->getCards(),
+            "mode"=> $this->getMode()
         ];
     }
 

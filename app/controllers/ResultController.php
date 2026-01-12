@@ -17,7 +17,10 @@ class ResultController extends ControllersParent
                 p.id AS post_id,
                 p.post_name, 
                 c.id AS candidate_id,
-                u.name AS candidate_name, 
+                u.id AS user_id,
+                u.name AS candidate_name,
+                u.image_name,
+                u.has_image,
                 COUNT(v.id) AS vote_count
             FROM post p
             LEFT JOIN candidate c ON p.id = c.post_id
@@ -42,8 +45,11 @@ class ResultController extends ControllersParent
             }
             $results[$postId]['candidates'][] = [
                 'candidate_id' => $row['candidate_id'],
+                'user_id' => $row['user_id'],
                 'candidate_name' => $row['candidate_name'],
-                'vote_count' => $row['vote_count'], 
+                'vote_count' => $row['vote_count'],
+                'image_name' => $row['image_name'],
+                'has_image' => $row['has_image'],
             ];
         }
         // Re-index to have a simple array of posts
@@ -112,7 +118,7 @@ class ResultController extends ControllersParent
             $pollResult = $this->getResultsByPollId($poll);
             
             if (empty($pollResult)) {
-                throw new Exception(message: $pollResult['message']['post_name']);
+                throw new Exception('Aucun résultat pour ce scrutin');
             }
 
             // Vérifier que FPDF est disponible
@@ -126,34 +132,105 @@ class ResultController extends ControllersParent
             
             // Titre
             $pdf->SetFont('Arial', 'B', 16);
-            $title = "Resultat Pour le strutin: " . $poll->getTitle() ;
+            $title = "Résultats du scrutin: " . $poll->getTitle();
             $pdf->Cell(0, 10, $this->convertToPdfText($title), 0, 1, 'C');
-            $pdf->Ln(10);
-            
-            // Contenu
-            foreach ($pollResult as $key => $result) {
-                $pdf->SetFont('Arial', 'B', 15);
+            $pdf->Ln(6);
+
+            // Paramètres de mise en page
+            $pageWidth = $pdf->GetPageWidth();
+            $pageHeight = $pdf->GetPageHeight();
+            $leftMargin = 10;
+            $rightMargin = 10;
+            $bottomMargin = 10;
+            $usableWidth = $pageWidth - $leftMargin - $rightMargin;
+            $cols = 4;
+            $colWidth = $usableWidth / $cols;
+            $imgW = min(30, $colWidth - 10);
+            $rowHeight = $imgW + 18; // image + text space
+
+            foreach ($pollResult as $result) {
+                $pdf->SetFont('Arial', 'B', 14);
                 $line = "Post : ". $result['post_name'];
                 $pdf->Cell(0, 8, $this->convertToPdfText($line), 0, 1);
-                
-                $pdf->SetFont("Arial", 'B', 12);
-                
-                // creation of result table
-                $pdf->Cell(60, 10, "Noms candidat", 1, 0, "C"); 
-                $pdf->Cell(40, 10, "Voix obtenu", 1, 0, "C");
-                $pdf->Cell(40, 10, 'Voix Totale',1, 0, "C");
-                $pdf->Cell(40, 10, "Pourcentage", 1, 0, "C"); 
-                $pdf->Ln();
+                $pdf->Ln(2);
 
                 $totalVoice = array_sum(array_column($result['candidates'], 'vote_count'));
 
-                foreach ($result['candidates'] as $key => $candData) {
-                    $pdf->SetFont('Arial', '', 11);
-                    $pdf->Cell(60, 10, $this->convertToPdfText($candData['candidate_name']), 1, 0, 'C');
-                    $pdf->Cell(40, 10, $this->convertToPdfText($candData['vote_count']), 1, 0, 'C');
-                    $pdf->Cell(40, 10, $this->convertToPdfText($totalVoice), 1, 0, 'C');
-                    $pdf->Cell(40, 10, $this->convertToPdfText(($totalVoice == 0)?0:$candData['vote_count'] *100/$totalVoice), 1, 0, 'C');
-                    $pdf->Ln();
+                $idx = 0;
+                $startY = $pdf->GetY();
+
+                $lineHName = 6; // line height for name
+                $lineHVote = 6; // line height for votes/percent block (can be two lines)
+                $padding = 4;
+                $blockHeight = $imgW + $lineHName + $lineHVote + $padding;
+
+                foreach ($result['candidates'] as $cand) {
+                    $col = $idx % $cols;
+                    $x = $leftMargin + $col * $colWidth;
+
+                    // Check page break based on the start of the row and block height
+                    if ($startY + $blockHeight > $pageHeight - $bottomMargin) {
+                        $pdf->AddPage();
+                        $startY = $pdf->GetY();
+                    }
+
+                    // Image
+                    $imagePath = __DIR__ . '/../../app/images/users/';
+                    $imageFile = null;
+                    if (!empty($cand['image_name'])) {
+                        $candidateImage = $imagePath . basename($cand['image_name']);
+                        if (file_exists($candidateImage)) $imageFile = $candidateImage;
+                    }
+                    if ($imageFile === null) {
+                        $defaultImage = $imagePath . 'default-image.png';
+                        if (file_exists($defaultImage)) $imageFile = $defaultImage;
+                    }
+
+                    $imgX = $x + ($colWidth - $imgW) / 2;
+                    $imgY = $startY; // anchor all columns to same top
+                    if ($imageFile) {
+                        $pdf->Image($imageFile, $imgX, $imgY, $imgW, $imgW);
+                    }
+
+                    // Name under image (single-line, truncate if necessary)
+                    $nameY = $imgY + $imgW + 2;
+                    $pdf->SetXY($x, $nameY);
+                    $pdf->SetFont('Arial', 'B', 10);
+                    $nameText = $cand['candidate_name'] ?? '';
+                    $nameText = $this->truncateTextToWidth($pdf, $nameText, $colWidth - 2);
+                    $pdf->Cell($colWidth, $lineHName, $this->convertToPdfText($nameText), 0, 2, 'C');
+
+                    // Votes and percentage under the name
+                    $pdf->SetXY($x, $nameY + $lineHName);
+                    $pdf->SetFont('Arial', '', 9);
+                    $votesText = 'Voix: ' . ($cand['vote_count'] ?? 0);
+                    $percent = ($totalVoice == 0) ? 0 : round((($cand['vote_count'] ?? 0) * 100) / $totalVoice, 2);
+                    $percentText = 'Pct: ' . $percent . '%';
+                    $pdf->MultiCell($colWidth, $lineHVote, $this->convertToPdfText($votesText . "\n" . $percentText), 0, 'C');
+
+                    // Reset Y to start of row for next column
+                    $pdf->SetY($startY);
+
+                    $idx++;
+                    // if end of row, advance Y by blockHeight
+                    if ($idx % $cols == 0) {
+                        $pdf->SetY($startY + $blockHeight + 4);
+                        $startY = $pdf->GetY();
+                    }
+                }
+
+                // If last row incomplete, move cursor down to leave space
+                if ($idx % $cols != 0) {
+                    $pdf->SetY($startY + $blockHeight + 6);
+                } else {
+                    $pdf->Ln(4);
+                }
+
+                // If last row incomplete, move cursor down
+                if ($idx % $cols != 0) {
+                    $pdf->Ln($rowHeight + 6);
+                } else {
+                    $pdf->Ln(4);
                 }
             }
 
@@ -162,7 +239,7 @@ class ResultController extends ControllersParent
 
             // Headers PDF
             header('Content-Type: application/pdf');
-            header('Content-Disposition: inline; filename="cards_poll_' . $poll->getId() . '.pdf"');
+            header('Content-Disposition: inline; filename="results_poll_' . $poll->getId() . '.pdf"');
             header('Cache-Control: no-cache, no-store, must-revalidate');
             header('Pragma: no-cache');
             header('Expires: 0');
@@ -193,6 +270,31 @@ class ResultController extends ControllersParent
     }
 
     // pdf methode
+    /**
+     * Truncate text to fit within a given width in current PDF font
+     */
+    private function truncateTextToWidth(FPDF $pdf, string $text, float $maxWidth): string {
+        $text = trim($text);
+        if ($text === '') return $text;
+
+        // If it already fits, return as is
+        if ($pdf->GetStringWidth($this->convertToPdfText($text)) <= $maxWidth) return $text;
+
+        $ellipsis = '...';
+        $ellipsisWidth = $pdf->GetStringWidth($this->convertToPdfText($ellipsis));
+
+        $len = mb_strlen($text);
+        while ($len > 0) {
+            $candidate = mb_substr($text, 0, $len);
+            if ($pdf->GetStringWidth($this->convertToPdfText($candidate)) + $ellipsisWidth <= $maxWidth) {
+                return $candidate . $ellipsis;
+            }
+            $len--;
+        }
+
+        return $ellipsis;
+    }
+
     /**
      * Convertit le texte UTF-8 pour FPDF
      */

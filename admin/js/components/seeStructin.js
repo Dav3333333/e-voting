@@ -48,7 +48,6 @@ class See{
     }
 
     #renderPostPollSection(post_cand_info){
-
         const container = document.createElement("div");
         post_cand_info.forEach(post => {
             const model = `
@@ -91,6 +90,7 @@ class See{
         const statDb = poll.message.status;
         const status = (poll.message.status == "passed")? "Temps Expirer" : "Jour J - "+poll.message.dayBefore.days;
         const cardData = poll.message.cardData;
+        const mode = poll.message.mode;
 
         let postData = (poll.message.posts.length > 0)? this.#renderPostPollSection(poll.message.posts) : `<div class="text-center">Pas de postes pour ce scrutin</div>` ;
 
@@ -101,7 +101,7 @@ class See{
             <button id="refresh-see-pool">🔄️</button>
         </h2>
         <p class="scrutin-description">${descrip}</p>
-      
+          
         <div class="scrutin-info">
           <span class="text-thin text-medium--size"><strong>Date debut :</strong><span class="text-small"> ${dateStart} </span></span>
           <span class="text-thin text-medium--size"><strong>Date fin :</strong><span class="text-small"> ${dateEnd} </span></span>
@@ -119,18 +119,23 @@ class See{
 
         </div>
         <div class="structin-actions">
-            <button ${statDb=="in_progress"?"class='btn btn-danger' id='end-poll'":"class='btn btn-success' id='start-poll'"} >${statDb == "in_progress"?"TERMINER LE SCRUTIN":"DÉMARRER LE SCRUTIN"}</button>
+            ${statDb == "passed"?"":`<button ${statDb=="in_progress"?"class='btn btn-danger' id='end-poll'":"class='btn btn-success' id='start-poll'"} >${statDb == "in_progress"?"TERMINER LE SCRUTIN":"DÉMARRER LE SCRUTIN"}</button>`}
             ${statDb=="in_progress"?"<button id='Authorized result'>Autorisez acces resultat</button>":""}
-            ${Array.isArray(cardData)  == false?
-                `<button class="btn btn-success card-mode" id="access-demand">Passe au mode Vote-ticket</button>`
-                :`<button class="btn btn-success card-mode" id="card-print">Imprimer Les Ticket</button>
-                  <button class="btn btn-success card-mode" id="card-download">Telecharger Les Ticket</button>  `}
+            ${statDb=="passed"?`<button class="btn btn-success card-mode" id="download-results">Télécharger les résultats</button>`:""}
+            ${Array.isArray(cardData)  == false && mode != "user-link-cardmode"?
+            `<button class="btn btn-success card-mode" id="access-demand">Passe au mode Vote-ticket</button>`
+            :`<button class="btn btn-success card-mode" id="card-print">Imprimer Les Ticket</button>
+              <button class="btn btn-success card-mode" id="card-download">Telecharger Les Ticket</button>  `}
+            ${mode == 'null' && Array.isArray(cardData) == false? 
+            `<button class="btn btn-success card-mode" id="access-demand-usermode">Passe au vote user-cardmode</button>`
+            :``}
         </div>
 
         <div class="dangerous-actions" style="margin-top:16px; padding:8px;">
             <h3>Actions dangereux</h3>
             <button class="btn btn-danger delete-card" id="delete-card">Supprimer le strutin</div>
-      </div>`;
+          </div>`;
+          
       return model;
     }
 

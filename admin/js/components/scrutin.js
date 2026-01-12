@@ -112,7 +112,6 @@ class Scrutin{
           if(await modal_ops.showConfirm("Suppression Scrutin", "Cette actions est irreversible voulez-vous supprimer definitivement? ") == true){
             await api.delete(`poll/${idPost}`).then((data)=>{
               if(data.status == "success"){
-                console.log(data);
                 this.render();
               }
               // re start 
@@ -168,8 +167,12 @@ class Scrutin{
           const idPoll = target.closest(".scrutin-container").id;
           if(btn_cliked.id == "access-demand"){
             // call to the api to ask the demande of card
-            this.#openDialog(this.formCardDemande(idPoll));
+            this.#openDialog(this.formCardDemande(idPoll, "cardmode"));
+          }
 
+          if(btn_cliked.id == "access-demand-usermode"){
+            // call to the api to ask the demande of user-link-mode
+            this.#openDialog(this.formCardDemande(idPoll, "user-link-cardmode"));
           }
 
           if(btn_cliked.id == "card-print"){
@@ -186,7 +189,7 @@ class Scrutin{
       });
     }
 
-    formCardDemande(idPoll){
+    formCardDemande(idPoll, mode){
       const formContainer = document.createElement("div");
 
       formContainer.classList.add("election-form-section");
@@ -205,10 +208,11 @@ class Scrutin{
           const idPoll = form.id; 
           const Formdata = new FormData(form); 
           Formdata.append("id_poll", idPoll);
+          Formdata.append("mode", mode);
 
           form.insertAdjacentHTML("beforeend", `<p class="text-info">La demande est en cours de traitement...</p>`);
 
-          await api.post("poll/cardmode/accessdemand",Formdata).then((data)=>{
+          await api.post("poll/card-mode/accessdemand",Formdata).then((data)=>{
             console.log(data);
             if(data.status == "success"){
               form.querySelector("p").textContent = "La demande a été bien prise en compte";
@@ -222,6 +226,7 @@ class Scrutin{
           // pdfPrint.imprimerPDF(idPoll);
           // Méthode simple (recommandée)
           // Si vous avez des problèmes, utilisez le debug d'abord
+
           async function imprimerAvecDebug(idPoll) {
               const result = await pdfPrint.debugPDF(idPoll);
               if (result.error) {

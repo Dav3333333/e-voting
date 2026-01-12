@@ -22,10 +22,6 @@ class ControllersParent {
         $this->database = Database::getInstance();
         $this->dateTime = new DateTime();
     }
-    
-    protected function getPollController():PollController{
-        return new PollController();
-    }
 }
 
 

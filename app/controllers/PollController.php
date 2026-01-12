@@ -96,8 +96,6 @@ class PollController extends ControllersParent{
      * @return void
      */
     private function loadPostPoll(Poll $poll):array{
-        
-        
         $plist = [];
 
         $qPost = $this->database->prepare("SELECT * FROM post WHERE poll_id = ?");
@@ -114,8 +112,7 @@ class PollController extends ControllersParent{
             
         }
 
-        return $plist;
-            
+        return $plist;      
     }
 
     /**
@@ -124,13 +121,11 @@ class PollController extends ControllersParent{
      */
     public function getForFuture():array|Object{
         $l = [];
-
         foreach ($this->getAll() as $key => $value) {
             if($value->getDateStart()->getTimestamp() > $this->dateTime->getTimestamp()){
                 $l[] = $value; 
             }
         }
-
         return $l;
     }
 
@@ -244,6 +239,9 @@ class PollController extends ControllersParent{
                 $q5 = $this->database->prepare("DELETE FROM poll WHERE id = ?");
                 $q5->execute(array($id));
 
+                $q6 = $this->database->prepare("DELETE FROM enrolements WHERE id_poll = ?");
+                $q6->execute(array($id));
+
                 $this->database->commit();
 
                 return $poll;
@@ -255,10 +253,12 @@ class PollController extends ControllersParent{
         }
     }
 
-    public function setPollToCardMode(Poll $poll) :bool|null{
-        if($poll->getIsCard_user_link_mode()) return null;
+    public function setPollMode(Poll $poll,string $mode) :bool|null{
+        if($poll->hasMode()) return null;
 
-        $q = $this->database->prepare("UPDATE poll SET in_card_mode = 1 WHERE id = ?");
+        $setColumn = $mode == 'cardmode'? "in_card_mode = 1" : "card_user_link_mode	 = 1"; 
+
+        $q = $this->database->prepare("UPDATE poll SET ".$setColumn." WHERE id = ?");
         return $q->execute(array($poll->getId()));
     }
 
