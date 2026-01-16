@@ -1,6 +1,9 @@
 import { api } from "../../../admin/js/libs/api.js";
 import { modal_ops} from "../../../admin/js/components/modal_ops.js";
 
+// pdf manager
+import { pdfPrint } from "../../../admin/js/libs/printTask.js";
+
 class VoteController {
     constructor() {
         this.urlParams = new URLSearchParams(window.location.search);
@@ -38,7 +41,7 @@ class VoteController {
     renderCardForm() {
         this.container.innerHTML = `
             <div class="card-form">
-                <h3>Vote par Carte</h3>
+                <h3>Vote UCBC</h3>
                 <p>Veuillez entrer le code de votre carte pour accéder au vote</p>
                 <form id="cardForm">
                     <div class="error-message hidden">message error</div>
@@ -96,6 +99,13 @@ class VoteController {
 
         const post = await api.get(`post/getavailablepostcard/poll/${this.voteId}/card/${this.currentCardCode}`);
 
+        if(post.status == "fail" && post.message.status == "success" && post.message.rowCount == 0){
+            const blob = await api.getBlob(`vote/receipt/poll/${this.voteId}/card/${this.currentCardCode}`);
+            const url = window.URL.createObjectURL(blob);
+
+            await pdfPrint.printWithIframe(url)
+        }
+
         console.log(this.voteId, this.currentCardCode);
 
         if(post.status != "success"){
@@ -122,7 +132,7 @@ class VoteController {
                             `;
             voteContainer.appendChild(div);
 
-            this.container.innerHTML = `<h1>${post.post.postName}</h1>`;
+            this.container.innerHTML = `<h1>Poste Actuel: ${post.post.postName}</h1>`;
             this.container.appendChild(voteContainer);
         });
 
@@ -206,13 +216,12 @@ class VoteController {
                     await modal_ops.showSuccesMessage("Vote", "Vote Enregistrer Avec Success");
                     await this.goNextPoll();
                     console.log(response)
-                } else {
-                    console.log(response)
-                    alert(`${response.message} error here`);
-                }
+                } 
+
+
             } catch (err) {
                 console.error(err);
-                alert("Erreur lors du vote");
+                // alert("Erreur lors du vote");
             }
         });
     }
@@ -221,9 +230,20 @@ class VoteController {
         const rep = await api.get(`post/getavailablepostcard/poll/${this.voteId}/card/${this.currentCardCode}`);
         if(rep.status == "success"){
             this.renderVoteForm();
-        }else{
-            this.renderCardForm();
         }
+
+        if(rep.status == "fail" && rep.message.status == "success" && rep.message.rowCount == 0){
+            const blob = await api.getBlob(`vote/receipt/poll/${this.voteId}/card/${this.currentCardCode}`);
+            const url = window.URL.createObjectURL(blob);
+
+            await pdfPrint.printWithIframe(url);
+            this.renderCardForm();
+        } 
+        
+        
+        // else{
+        //     this.renderCardForm();
+        // }
     }
 
 }

@@ -1,6 +1,6 @@
 <?php
 
-NAMESPACE Dls\Evoting\controllers;
+namespace Dls\Evoting\controllers;
 
 require_once(__DIR__ . '/../../vendor/autoload.php');
 
@@ -103,7 +103,7 @@ class PollController extends ControllersParent{
 
 
         while($p = $qPost->fetch(PDO::FETCH_ASSOC)){
-            $candQ = $this->database->prepare("SELECT c.user_id, c.status, u.name FROM `candidate` c LEFT JOIN `users` u ON `u`.`id` = `c`.`user_id` WHERE `c`.`post_id` = ? AND `c`.`status` != ?");
+            $candQ = $this->database->prepare("SELECT c.user_id, c.status, u.name, c.id AS candId FROM `candidate` c LEFT JOIN `users` u ON `u`.`id` = `c`.`user_id` WHERE `c`.`post_id` = ? AND `c`.`status` != ?");
             $candQ->execute(array($p['id'], -1));
 
             $post = new Post($p['id'], $p['poll_id'], $p['post_name'], $candQ->fetchAll(PDO::FETCH_ASSOC));

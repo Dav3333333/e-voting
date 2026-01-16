@@ -141,6 +141,15 @@ body, html {
   padding: 8px;
 }
 
+
+#candidatsContainer h1{
+  padding: 8px;
+  margin-bottom: 40px;
+  background-color: white;
+  text-align: center;
+  color:#2c3e50;
+}
+
 /* La grille principale */
 .card-list {
   padding:8x;

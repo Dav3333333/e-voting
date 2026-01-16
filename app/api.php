@@ -158,8 +158,12 @@ class Api
                     // for cardmode
                     if($mode == "cardmode") return json_encode($this->controller->voteInCardMode());
 
-                    // for user-link-mode
-                    if($mode == "user-link-cardmode") return json_encode($this->controller->voteWithUserLinkedCard());
+                    // for user-link-mode: try to generate a PDF receipt on success. The controller method will stream the PDF and exit on success.
+                    if($mode == "user-link-cardmode"){
+                         $res = $this->controller->voteWithUserLinkedCardAndPdf();
+                         if(is_array($res)) return json_encode($res);
+                         return json_encode(["status"=>"fail", "message"=>"Unable to generate vote receipt PDF"]);
+                    }
 
                     return json_encode(["status"=>"fail", "message"=>"Unkwon vote mode"]);
                }
@@ -393,6 +397,25 @@ class Api
      $this->add_roote("get", "post/getavailablepostcard/poll/{pollId}/card/{cardcode}", function($pollId, $cardcode){
           header("Content-Type:application/json");
           return json_encode($this->controller->getAvablePostForCard($pollId, $cardcode));
+     });
+
+     // allow downloading the vote receipt PDF for a poll and card (if card has completed all posts)
+     $this->add_roote("get", "vote/receipt/poll/{pollId}/card/{cardcode}", function($pollId, $cardcode){
+          $res = $this->controller->getVoteReceiptPdfForCard(intval($pollId), $cardcode);
+
+          if (is_string($res)) {
+               // Stream PDF
+               header('Content-Type: application/pdf');
+               header('Content-Disposition: inline; filename="vote_receipt_poll_' . intval($pollId) . '.pdf"');
+               header('Cache-Control: no-cache, no-store, must-revalidate');
+               header('Pragma: no-cache');
+               header('Expires: 0');
+               echo $res;
+               exit;
+          }
+
+          header('Content-Type: application/json');
+          return json_encode($res);
      });
    }
 

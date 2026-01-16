@@ -1,5 +1,5 @@
 <?php 
-NAMESPACE Dls\Evoting\controllers;
+namespace Dls\Evoting\controllers;
 
 require_once(__DIR__ . '/../../vendor/autoload.php');
 
@@ -24,7 +24,7 @@ use Dls\Evoting\controllers\CardController;
 use DateTime;
 use Exception;
 
-use function PHPSTORM_META\type;
+use FPDF;
 
 class Controller {
 
@@ -819,6 +819,371 @@ class Controller {
                 "message" => "Paramètres manquants"
             ];
         }
+    }
+
+    /**
+     * Same as voteWithUserLinkedCard, but on success it returns an inline PDF receipt with all posts and the user's chosen candidates highlighted.
+     * On failure it returns an array similar to the original method.
+     */
+    public function isCardCompletedForVotes(array $posts, array $votes): bool
+    {
+        foreach ($posts as $p) {
+            if (!isset($votes[$p->getId()])) return false;
+        }
+        return true;
+    }
+
+    /**
+     * Return binary PDF when card is completed for poll; otherwise return an array error with next post id.
+     * @param int $pollId
+     * @param string $cardCode
+     * @return array|string PDF binary or error array
+     */
+    public function getVoteReceiptPdfForCard(int $pollId, string $cardCode): array|string
+    {
+        $poll = $this->getPollObject($pollId);
+        if (!($poll instanceof Poll)) {
+            return ["status" => "fail", "message" => "Poll not found"];
+        }
+
+        $card = $this->cardController->getCardByCode($cardCode);
+        if (!($card instanceof Card)) {
+            return ["status" => "fail", "message" => "Card not found"];
+        }
+
+        $user = $this->usersController->getUserById($card->getLinkedUser());
+        if (!($user instanceof User)) {
+            return ["status" => "fail", "message" => "Card not linked to a valid user"];
+        }
+
+        // check card validity for poll
+        if (!$this->cardController->isValidCardForPoll($poll, $card)) {
+            return ["status" => "fail", "message" => "Card is not valid for this poll"];
+        }
+
+        // check available posts
+        $available = $this->postController->getAvablePostForCard(poll:$poll, card:$card);
+        if ($available instanceof Post) {
+            return ["status" => "fail", "message" => "Card not completed", "next_post_id" => $available->getId()];
+        }
+
+        // gather posts and votes
+        $posts = $this->postController->getPostOfPoll($poll);
+        $votes = $this->voteController->getUserVotesForPoll($poll, $user);
+
+        // stream PDF directly; this method will echo and exit on success
+        $this->generateVoteReceiptPdfForUser($poll, $user);
+
+        // if we reach this point, PDF generation failed
+        return ["status"=>"fail","message"=>"Erreur lors de la génération du PDF"]; 
+    }
+
+    public function voteWithUserLinkedCardAndPdf():array
+    {
+        // reuse most of the logic of voteWithUserLinkedCard
+        if (
+            isset($_POST['poll_id'], $_POST['post_id'], $_POST['candidate_id'], $_POST['card_code']) &&
+            is_numeric($_POST['poll_id']) &&
+            is_numeric($_POST['post_id']) &&
+            is_numeric($_POST['candidate_id']) &&
+            !empty($_POST['card_code'])
+        ) {
+            $poll = $this->pollController->getPoll((int)$_POST['poll_id']);
+            $post = $this->postController->getPostById((int)$_POST['post_id']);
+            $candidate = $this->candidateController->getCandidate((int)$_POST['candidate_id']);
+            $card = $this->cardController->getCardByCode($_POST['card_code']);
+
+            if(!$card instanceof Card){
+                return[
+                    "status"=>"fail",
+                    "message"=>"Card non identifier"
+                ];
+            }
+
+            if(!$card->isLinkable()){
+                return[
+                    "status"=>"fail",
+                    "message"=>"Card n'est pas linkable"
+                ];
+            }
+
+            $user = $this->usersController->getUserById($card->getLinkedUser());
+
+            if (
+                $poll instanceof Poll &&
+                $post instanceof Post &&
+                $candidate instanceof Candidate &&
+                $user instanceof User
+            ) {
+                if(!$card->isLinkable()){
+                return [
+                    "status"=>"fail", 
+                    "message"=>"ce card n'est pas linkable"
+                ];
+            }
+
+                if($poll->getInCardMode()){
+                    return [
+                        "status" => "fail",
+                        "message" => "Ce strutin est en mode vote avec card"
+                    ];
+                }
+
+                if($poll->getMode() != "user-link-cardmode"){
+                    return[
+                        "status" => "fail", 
+                        "message" => "Ce srtrutin n'est pas en mode user-link-cardmode"
+                    ];
+                }
+
+                if ($this->pollController->isPollPassed($poll)) {
+                    return [
+                        "status" => "fail",
+                        "message" => "Le scrutin est déjà passé"
+                    ];
+                }
+
+                // check available post for this card before voting
+                $availableBefore = $this->postController->getAvablePostForCard($poll, $card);
+
+                // if no available posts initially, user has already completed all posts: return PDF (allow re-download)
+                if (!($availableBefore instanceof Post)) {
+                    // stream PDF
+                    $this->generateVoteReceiptPdfForUser($poll, $user);
+                    return ["status"=>"fail","message"=>"Erreur lors de la génération du reçu PDF"]; // fallback
+                }
+
+                // ensure the post being voted is the available post
+                if ($availableBefore->getId() !== $post->getId()) {
+                    return [
+                        "status" => "fail",
+                        "message" => "Le poste envoyé n'est pas disponible pour cette carte",
+                        "available_post_id" => $availableBefore->getId(),
+                        "sent_post_id" => $post->getId()
+                    ];
+                }
+
+                if($this->voteController->hasVoted($poll, $post, $user)){
+                    return [
+                        "status" => "fail",
+                        "message" => "Vous avez déjà voté pour ce poste dans ce scrutin"
+                    ];
+                }
+
+                $result = $this->voteController->voteUserCardMode(poll:$poll, post:$post, candidate:$candidate, card:$card, user:$user);
+
+                if ($result) {
+                    // after voting, check if there are still available posts
+                    $availableAfter = $this->postController->getAvablePostForCard($poll, $card);
+                    if (!($availableAfter instanceof Post)) {
+                        // completed all posts: generate PDF
+                        $this->generateVoteReceiptPdfForUser($poll, $user);
+                        return ["status"=>"fail","message"=>"Erreur lors de la génération du reçu PDF"]; // fallback if PDF fails
+                    }
+
+                    // otherwise return success and let caller continue voting
+                    return [
+                        "status" => "success",
+                        "message" => "Vote enregistré",
+                        "next_post_id" => $availableAfter instanceof Post ? $availableAfter->getId() : null
+                    ];
+                } else {
+                    return [
+                        "status" => "fail",
+                        "message" => "Erreur lors de l'enregistrement du vote"
+                    ];
+                }
+            } else {
+                return [
+                    "status" => "fail",
+                    "message" => "Paramètres invalides"
+                ];
+            }
+        } else {
+            return [
+                "status" => "fail",
+                "message" => "Paramètres manquants"
+            ];
+        }
+    }
+
+    /**
+     * Generates a single-page PDF receipt for the given poll and user. Each post occupies a vertical block; the user's chosen candidate for that post (if any) is shown with a green background, including their image and name.
+     * This method outputs headers and the PDF directly and exits on success; on failure it throws an Exception.
+     * @param Poll $poll
+     * @param User $user
+     * @return void
+     */
+    /**
+     * Build and return PDF binary for given poll/user using provided posts & votes (testable)
+     * @param Poll $poll
+     * @param User $user
+     * @param array $posts
+     * @param array $votes
+     * @return string
+     * @throws Exception
+     */
+    public function buildVoteReceiptPdfForUserFromData(Poll $poll, User $user, array $posts, array $votes): string
+    {
+        $pdf = new FPDF();
+        $pdf->AddPage();
+        $pdf->SetAutoPageBreak(false);
+
+        // title
+        $pdf->SetFont('Arial','B',12);
+        $pdf->Cell(0,8, $this->convertToPdfText("Butin de vote - " . $poll->getTitle()), 0,1,'C');
+        $pdf->SetFont('Arial','',9);
+        $pdf->Cell(0,5, $this->convertToPdfText("Electeur: " . $user->getName()), 0,1,'C');
+        $pdf->Ln(3);
+
+        $pageW = $pdf->GetPageWidth();
+        // Compact layout: reduced margins and tighter spacing
+        $usableW = $pageW - 16; // 8mm margins each side
+        $startX = 8;
+        $gutter = 4; // smaller space between columns
+        $cols = 2;
+
+        $currentY = $pdf->GetY();
+        $pageH = $pdf->GetPageHeight();
+        $usableH = $pageH - $currentY - 10; // smaller bottom margin
+
+        $nPosts = max(1, count($posts));
+        $rowsPerColumn = (int)ceil($nPosts / $cols);
+        $blockH = floor($usableH / $rowsPerColumn);
+        if ($blockH < 16) $blockH = 16; // smaller minimal height to compact
+
+        $colW = floor(($usableW - $gutter) / $cols);
+
+        foreach ($posts as $index => $post) {
+            $col = $index % $cols; // 0 or 1
+            $row = (int)floor($index / $cols);
+
+            $blockX = $startX + $col * ($colW + $gutter);
+            $blockY = $currentY + $row * $blockH;
+
+            // draw post title inside the block
+            $pdf->SetFont('Arial','B',10);
+            $pdf->SetTextColor(0,0,0);
+            $pdf->SetXY($blockX + 3, $blockY + 3);
+            $pdf->Cell($colW - 6, 6, $this->convertToPdfText($post->getPostName()), 0, 2);
+
+            $votedCandidateId = $votes[$post->getId()] ?? null;
+
+            if ($votedCandidateId !== null) {
+                // find candidate info inside post->candidateList
+                $found = null;
+                foreach ($post->jsonSerialize()['candidateList'] as $c) {
+                    if ((int)$c['candId'] === (int)$votedCandidateId) {
+                        $found = $c;
+                        break;
+                    }
+                }
+
+                if ($found) {
+                    // green background for the candidate area
+                    $pdf->SetFillColor(0,160,60);
+                    $pdf->Rect($blockX + 3, $blockY + 11, $colW - 6, $blockH - 14, 'F');
+
+                    // candidate image (only if the file exists; avoid warnings from FPDF->Image)
+                    $candidateUser = $this->usersController->getUserById((int)$found['user_id']);
+                    $imageName = ($candidateUser && $candidateUser->getImageName()) ? $candidateUser->getImageName() : 'default-image.png';
+                    $imagePath = __DIR__ . '/../../app/images/users/' . $imageName;
+
+                    if (file_exists($imagePath)) {
+                        // compact image size
+                        $imgH = min($blockH - 14, 18);
+                        if ($imgH < 8) $imgH = 8;
+
+                        $imgX = $blockX + 5;
+                        $imgY = $blockY + 11;
+                        // suppress warnings and ignore any throwable
+                        try {
+                            $pdf->Image($imagePath, $imgX, $imgY, $imgH, $imgH);
+                        } catch (\Throwable $ex) {
+                            // ignore image errors; continue without image
+                        }
+                    }
+
+                    // candidate name in white
+                    $pdf->SetTextColor(255,255,255);
+                    $pdf->SetFont('Arial','B',10);
+                    $pdf->SetXY($imgX + $imgH + 3, $imgY + ($imgH/4));
+                    $pdf->Cell($colW - ($imgH + 14), 6, $this->convertToPdfText($found['name']), 0, 0);
+
+                    // reset color
+                    $pdf->SetTextColor(0,0,0);
+
+                } else {
+                    $pdf->SetFont('Arial','I',9);
+                    $pdf->SetXY($blockX + 3, $blockY + 11);
+                    $pdf->Cell($colW - 6, 6, $this->convertToPdfText("Vote enregistré (candidat introuvable)"), 0, 0);
+                }
+
+            } else {
+                // no vote for this post
+                $pdf->SetFont('Arial','I',9);
+                $pdf->SetXY($blockX + 3, $blockY + 11);
+                $pdf->Cell($colW - 6, 6, $this->convertToPdfText("Aucun vote pour ce poste"), 0, 0);
+            }
+
+            // if the next block would overflow the page, stop (we intentionally keep single page)
+            if ($blockY + $blockH > $pageH - 10) {
+                break;
+            }
+        }
+
+        // return binary PDF
+        $pdfBinary = $pdf->Output('S');
+        return ($pdfBinary !== null && is_string($pdfBinary)) ? $pdfBinary : '';
+    }
+
+    /**
+     * Build and return PDF binary for given poll/user using provided posts & votes (testable)
+     * @param Poll $poll
+     * @param User $user
+     * @param array $posts
+     * @param array $votes
+     * @return string
+     * @throws Exception
+     */
+
+    private function generateVoteReceiptPdfForUser(Poll $poll, User $user):void
+    {
+        // clean all output buffers
+        while (ob_get_level()) ob_end_clean();
+        ob_start();
+
+        try{
+            $posts = $this->postController->getPostOfPoll($poll);
+            $votes = $this->voteController->getUserVotesForPoll($poll, $user); // mapping post_id => candidate_id
+
+            $pdfBinary = $this->buildVoteReceiptPdfForUserFromData($poll, $user, $posts, $votes);
+
+            // output PDF
+            ob_clean();
+            header('Content-Type: application/pdf');
+            header('Content-Disposition: inline; filename="vote_receipt_poll_' . $poll->getId() . '.pdf"');
+            header('Cache-Control: no-cache, no-store, must-revalidate');
+            header('Pragma: no-cache');
+            header('Expires: 0');
+
+            echo $pdfBinary;
+            exit;
+
+        }catch(Exception $e){
+            while (ob_get_level()) ob_end_clean();
+            http_response_code(500);
+            header('Content-Type: application/json');
+            echo json_encode(['status'=>'fail','message'=>'Erreur génération PDF','error'=>$e->getMessage()]);
+            exit;
+        }
+    }
+
+    /**
+     * Converti le texte pour FPDF
+     */
+    private function convertToPdfText(string $text): string{
+        return iconv('UTF-8', 'windows-1252', $text);
     }
 
      /**

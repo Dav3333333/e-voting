@@ -69,6 +69,27 @@ class VoteController extends ControllersParent{
         return ($q->execute(array($poll->getId(), $post->getId(), $candidate->getId(), $card->get_code_card(), $user->getId()))) ? true : false;
     }
 
+    /**
+     * return an associative array of the user's votes for a given poll
+     * @param Poll $poll
+     * @param User $user
+     * @return array<int,int> mapping post_id => candidate_id
+     */
+    public function getUserVotesForPoll(Poll $poll, User $user):array{
+        try{
+            $q = $this->database->prepare("SELECT post_id, candidate_id FROM voice WHERE poll_id = ? AND user_id = ?");
+            $q->execute(array($poll->getId(), $user->getId()));
+            $rows = $q->fetchAll(\PDO::FETCH_ASSOC);
+            $map = [];
+            foreach($rows as $r){
+                $map[(int)$r['post_id']] = (int)$r['candidate_id'];
+            }
+            return $map;
+        }catch(\Throwable $t){
+            return [];
+        }
+    }
+
     public function startVote(Poll $poll):bool{
         $q = $this->database->prepare("UPDATE `poll` SET `status`=? WHERE `id`=?");
         return ($q->execute(array("in_progress", $poll->getId()))) ? true : false;

@@ -154,7 +154,7 @@ class CardController extends ControllersParent
         foreach ($cards as $key => $value) {
             $pdf->Cell(0,10, utf8_decode("Code de la carte n°" . ($key+1) . ": " . $value->get_code_card()),0,1);
         }
-        $filePath = __DIR__ . '/../../public/pdf/cards_poll_' . $poll->getId() . '.pdf';
+        $filePath = __DIR__ . '/../../public/pdf/cards_poll_' . $poll->getTitle() . '.pdf';
         $pdf->Output('F', $filePath);
         return $filePath;
     }
@@ -363,7 +363,9 @@ class CardController extends ControllersParent
     }
 
     public function isValidCardForPoll(Poll $poll, Card $code_card):bool{
-        return $this->isCardOfPoll($poll, $code_card) && $this->isCardExistingAndUnused($code_card->get_code_card());
+        return $this->isCardOfPoll($poll, $code_card) 
+                && $this->isCardExistingAndUnused($code_card->get_code_card())
+                && ($poll->getMode() ==  $code_card->getMode());
     }
 
 }

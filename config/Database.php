@@ -1,5 +1,5 @@
 <?php
-NAMESPACE Config;
+namespace Config;
 
 use PDO;
 

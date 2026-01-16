@@ -1,5 +1,5 @@
 <?php
-NAMESPACE Dls\Evoting\models;
+namespace Dls\Evoting\models;
 
 require_once(__DIR__ . '/../../vendor/autoload.php');
 

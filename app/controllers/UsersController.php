@@ -1,5 +1,5 @@
 <?php 
-NAMESPACE Dls\Evoting\controllers;
+namespace Dls\Evoting\controllers;
 
 use Dls\Evoting\models\Card;
 use Exception;

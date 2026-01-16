@@ -15,7 +15,7 @@ if(!isset($_GET['id'], $_GET['c'])) die("<p> Une erreur interne a interrompu l'e
 </head>
 <body>
   <header style="display: flex; justify-content: space-between; align-items: center; padding: 10px;">
-    <a href="./scrutin.php" class="back-btn">← Retour</a>
+    <!-- <a href="./scrutin.php" class="back-btn">← Retour</a> -->
     <h1 id="title"></h1>
   </header>
 

@@ -1,5 +1,5 @@
 <?php
-NAMESPACE Dls\Evoting\models;
+namespace Dls\Evoting\models;
 
 require_once(__DIR__ . '/../../vendor/autoload.php');
 
@@ -62,6 +62,11 @@ class Card implements JsonSerializable
 
     public function getLinkedUser():int|null{
         return $this->linkedUser;
+    }
+
+    public function getMode():string{
+        if($this->linkableToUser && $this->linkedUser) return "user-link-cardmode";
+        return "cardmode"; 
     }
 
     public function jsonSerialize():array{

@@ -1,6 +1,6 @@
 <?php 
 
-NAMESPACE Dls\Evoting\controllers;
+namespace Dls\Evoting\controllers;
 
 require_once(__DIR__ . '/../../vendor/autoload.php');
 // require_once("./config/Database.php");
