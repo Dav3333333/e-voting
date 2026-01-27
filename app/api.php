@@ -549,7 +549,7 @@ class Api
                // postUserImage doit renvoyer un array avec success/url/filename ou lancer Exception
                http_response_code(201);
                return json_encode($result);
-          } catch (\Exception $e) {
+          } catch (Exception $e) {
                http_response_code(500);
                return json_encode(['error' => 'Erreur serveur lors de l\'enregistrement du fichier.', 'message' => $e->getMessage()]);
           }

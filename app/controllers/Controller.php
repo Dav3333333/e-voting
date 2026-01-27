@@ -1033,7 +1033,7 @@ class Controller {
         $pdf->SetFont('Arial','B',12);
         $pdf->Cell(0,8, $this->convertToPdfText("Butin de vote - " . $poll->getTitle()), 0,1,'C');
         $pdf->SetFont('Arial','',9);
-        $pdf->Cell(0,5, $this->convertToPdfText("Electeur: " . $user->getName()), 0,1,'C');
+        $pdf->Cell(0,5, $this->convertToPdfText("Electeur: " . $user->getMatricule()), 0,1,'C');
         $pdf->Ln(3);
 
         $pageW = $pdf->GetPageWidth();

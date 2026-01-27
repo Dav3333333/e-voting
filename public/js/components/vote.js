@@ -155,7 +155,7 @@ class VoteController {
 
             if(target.classList.contains("card-name")) nameCandidate = target.textContent;
 
-            if (target.classList.contains("card-image")) nameCandidate = target.closest(".card").querySelector(".card-image").textContent
+            if (target.classList.contains("card-image")) nameCandidate = target.closest(".card").querySelector(".card-name").textContent
 
             if(target.classList.contains("card")){
                 idCandidate = target.id;
@@ -169,7 +169,7 @@ class VoteController {
                 return;
             }
 
-            if(await modal_ops.showConfirm("Confirmation Vote", `Vous confirmer le choix de ${nameCandidate} pour ce scrutin ?`) == false) return;
+            if(await modal_ops.showConfirm("Confirmation Vote", `Vous confirmer le choix de <strong style="text-transform:uppercase;">${nameCandidate}</strong> pour ce scrutin ?`) == false) return;
 
             try {
                 let response;

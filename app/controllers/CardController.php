@@ -140,6 +140,10 @@ class CardController extends ControllersParent
         }
     }
 
+    private function truncateText(string $text, int $length): string{
+        return (strlen($text) > $length) ? substr($text,0, $length).'...' : $text;
+    }
+
     public function linkUsersFileToCards(){
 
     }
@@ -230,8 +234,8 @@ class CardController extends ControllersParent
                 $pdf->SetFont('Arial', '', 10);
                 foreach ($rows as $r) {
                     $pdf->Cell(35, 7, $this->convertToPdfText($r['matricule'] ?? ''), 1, 0, 'L');
-                    $pdf->Cell(60, 7, $this->convertToPdfText($r['name'] ?? ''), 1, 0, 'L');
-                    $pdf->Cell(60, 7, $this->convertToPdfText($r['email'] ?? ''), 1, 0, 'L');
+                    $pdf->Cell(60, 7, $this->convertToPdfText($this->truncateText($r['name'], 27) ?? ''), 1, 0, 'L');
+                    $pdf->Cell(60, 7, $this->convertToPdfText($this->truncateText($r['email'], 28) ?? ''), 1, 0, 'L');
                     $pdf->Cell(30, 7, $this->convertToPdfText($r['card_code'] ?? ''), 1, 1, 'L');
                 }
 
@@ -240,7 +244,7 @@ class CardController extends ControllersParent
 
                 // Headers PDF
                 header('Content-Type: application/pdf');
-                header('Content-Disposition: inline; filename="cards_poll_' . $poll->getId() . '_users.pdf"');
+                header('Content-Disposition: inline; filename="cards_poll_' . $poll->getTitle() . '_users.pdf"');
                 header('Cache-Control: no-cache, no-store, must-revalidate');
                 header('Pragma: no-cache');
                 header('Expires: 0');
@@ -269,7 +273,7 @@ class CardController extends ControllersParent
 
             // Headers PDF
             header('Content-Type: application/pdf');
-            header('Content-Disposition: inline; filename="cards_poll_' . $poll->getId() . '.pdf"');
+            header('Content-Disposition: inline; filename="cards_poll --'.$poll->getTitle().'.pdf"');
             header('Cache-Control: no-cache, no-store, must-revalidate');
             header('Pragma: no-cache');
             header('Expires: 0');
