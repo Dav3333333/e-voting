@@ -181,8 +181,19 @@ class UsersController extends ControllersParent{
             if(!$card instanceof Card){
                 return [$user, $poll, $card];
             }
-            $q = $this->database->prepare("INSERT INTO enrolements(id_poll, id_user ,has_card, card_code, expired, date_time) VALUES(?,?,?,?,?, NOW())");
-            return $q->execute([$poll->getId(), $user->getId(), true, $card->get_code_card(),false]);
+            // $q = $this->database->prepare("INSERT INTO enrolements(id_poll, id_user ,has_card, card_code, expired, date_time) VALUES(?,?,?,?,?, NOW())");
+            // return $q->execute([$poll->getId(), $user->getId(), true, $card->get_code_card(),false]);
+
+            $q = $this->database->prepare("INSERT INTO enrolements(id_poll, id_user, has_card, card_code, expired, date_time) VALUES(?,?,?,?,?, NOW())");
+
+            $q->bindValue(1, $poll->getId(), \PDO::PARAM_INT);
+            $q->bindValue(2, $user->getId(), \PDO::PARAM_INT);
+            $q->bindValue(3, true, \PDO::PARAM_BOOL); // PDO convertira correctement en 1
+            $q->bindValue(4, $card->get_code_card(), \PDO::PARAM_STR);
+            $q->bindValue(5, false, \PDO::PARAM_BOOL); // PDO convertira correctement en 0
+
+            return $q->execute();
+
             // return false;
         } catch (\Throwable $th) {
             return $th->getMessage();
@@ -228,15 +239,17 @@ class UsersController extends ControllersParent{
      */
     public function getUserImage(User $user){
         // read file to send
-        $path = "images/users/";
+        $path = __DIR__ . '/../images/users/';
         
         if($user->getImageName() == null){
-            $path .= basename("default-image.png");
+            $path .= 'default-image.png';
         }else{
             $path .= basename($user->getImageName());
         }
         
-        if(!file_exists($path)) $path =   "images/users/".basename("default-image.png");
+        if(!file_exists($path)) {
+            $path = __DIR__ . '/../images/users/default-image.png';
+        }
         
         $mime = mime_content_type($path);
         // defining headers

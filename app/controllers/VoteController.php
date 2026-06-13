@@ -62,7 +62,7 @@ class VoteController extends ControllersParent{
      */
     public function voteUserCardMode(Poll $poll, Post $post, Candidate $candidate, Card $card, User $user):bool{
         // check: is the user linked to the card and if card used
-        if($this->hasVoted($poll, $post, $user) || !$card->isLinkable() || !$card->getLinkedUser() == $user->getId()){
+        if ($this->hasVoted($poll, $post, $user) || !$card->isLinkable() || $card->getLinkedUser() !== $user->getId()) {
             return false;
         }
         $q = $this->database->prepare("INSERT INTO  `voice`(`poll_id`, `post_id`, `candidate_id`, `card_code`,user_id, timestamp) VALUES(?,?,?,?,?,NOW())");

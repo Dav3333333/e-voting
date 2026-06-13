@@ -166,10 +166,10 @@ class Controller {
         if($user instanceof User){
             return $this->usersController->getUserImage($user);
         }else{
-            header("Content-Type:application/json");
+            header("Content-Type: application/json");
             return [
-                "status"=>"fail",
-                "message"=>"Unfounded user with $userId id"
+                "status" => "fail",
+                "message" => "Unfounded user with $userId id"
             ];
         }
     }
@@ -284,16 +284,16 @@ class Controller {
         $card = $this->cardController->getCardByCode($codeCard);
 
         if($poll instanceof Poll && $card instanceof Card){
-            $res =  $this->postController->getAvablePostForCard($poll, $card);
-            if($res instanceof Post){
+            $availablePost = $this->postController->getAvablePostForCard($poll, $card);
+            if ($availablePost instanceof Post) {
                 return [
-                    "status"=>"success", 
-                    "post"=>$res
+                    "status" => "success",
+                    "post" => $availablePost
                 ];
-            }else{
+            } else {
                 return [
-                    "status"=>"fail", 
-                    "message"=>$res, 
+                    "status" => "fail",
+                    "message" => $availablePost,
                 ];
             }
         }else{
@@ -850,32 +850,239 @@ class Controller {
         if (!($card instanceof Card)) {
             return ["status" => "fail", "message" => "Card not found"];
         }
-
-        $user = $this->usersController->getUserById($card->getLinkedUser());
-        if (!($user instanceof User)) {
-            return ["status" => "fail", "message" => "Card not linked to a valid user"];
-        }
-
         // check card validity for poll
         if (!$this->cardController->isValidCardForPoll($poll, $card)) {
             return ["status" => "fail", "message" => "Card is not valid for this poll"];
         }
 
-        // check available posts
+        $linkedUserId = $card->getLinkedUser();
+        if ($linkedUserId !== null) {
+            $user = $this->usersController->getUserById($linkedUserId);
+            if (!($user instanceof User)) {
+                return ["status" => "fail", "message" => "Card linked user not found"];
+            }
+
+            // check available posts
+            $available = $this->postController->getAvablePostForCard(poll:$poll, card:$card);
+            if ($available instanceof Post) {
+                return ["status" => "fail", "message" => "Card not completed", "next_post_id" => $available->getId()];
+            }
+
+            $this->generateVoteReceiptPdfForUser($poll, $user);
+            return ["status"=>"fail","message"=>"Erreur lors de la génération du PDF"]; 
+        }
+
+        if (!$poll->getInCardMode()) {
+            return ["status" => "fail", "message" => "Card is not linked and poll is not in cardmode"];
+        }
+
         $available = $this->postController->getAvablePostForCard(poll:$poll, card:$card);
         if ($available instanceof Post) {
             return ["status" => "fail", "message" => "Card not completed", "next_post_id" => $available->getId()];
         }
 
-        // gather posts and votes
         $posts = $this->postController->getPostOfPoll($poll);
-        $votes = $this->voteController->getUserVotesForPoll($poll, $user);
+        $votes = $this->getCardVotesForPoll($poll, $card);
+        return $this->buildVoteReceiptPdfForCardFromData($poll, $card, $posts, $votes);
+    }
 
-        // stream PDF directly; this method will echo and exit on success
-        $this->generateVoteReceiptPdfForUser($poll, $user);
+    private function getCardVotesForPoll(Poll $poll, Card $card): array
+    {
+        try {
+            $code = trim((string)$card->get_code_card());
 
-        // if we reach this point, PDF generation failed
-        return ["status"=>"fail","message"=>"Erreur lors de la génération du PDF"]; 
+            $q = $this->database->prepare("SELECT post_id, candidate_id FROM voice WHERE poll_id = ? AND card_code = ?");
+            $q->execute([$poll->getId(), $code]);
+            $rows = $q->fetchAll(\PDO::FETCH_ASSOC);
+
+            // fallback: try LIKE search if exact match returned nothing (some data may have whitespace/formatting)
+            if (empty($rows)) {
+                $q2 = $this->database->prepare("SELECT post_id, candidate_id FROM voice WHERE poll_id = ? AND card_code LIKE ?");
+                $q2->execute([$poll->getId(), "%" . $code . "%"]);
+                $rows = $q2->fetchAll(\PDO::FETCH_ASSOC);
+            }
+
+            $map = [];
+            foreach ($rows as $r) {
+                $map[(int)$r['post_id']] = (int)$r['candidate_id'];
+            }
+            return $map;
+        } catch (\Throwable $t) {
+            return [];
+        }
+    }
+
+    /**
+     * Generate a PDF containing one ballot per page for the given poll.
+     * @param int $pollId
+     * @return array|string PDF binary or error array
+     */
+    public function getPollBallotsPdf(int $pollId): array|string
+    {
+        $poll = $this->getPollObject($pollId);
+        if (!($poll instanceof Poll)) {
+            return ["status" => "fail", "message" => "Poll not found"];
+        }
+
+        $posts = $this->postController->getPostOfPoll($poll);
+
+        // get distinct used card codes for this poll
+        try {
+            $q = $this->database->prepare("SELECT DISTINCT card_code FROM voice WHERE poll_id = ?");
+            $q->execute([$poll->getId()]);
+            $rows = $q->fetchAll(\PDO::FETCH_ASSOC);
+            $usedCodes = array_map(fn($r) => $r['card_code'], $rows);
+        } catch (\Throwable $t) {
+            $usedCodes = [];
+        }
+
+        if (empty($usedCodes)) {
+            return ["status" => "fail", "message" => "No used cards for this poll"];
+        }
+
+        $cards = [];
+        foreach ($usedCodes as $code) {
+            $c = $this->cardController->getCardByCode($code);
+            if ($c instanceof Card) $cards[] = $c;
+            else {
+                // build a minimal Card object if not found to still print the ballot
+                $cards[] = new Card(0, $poll->getId(), $code, false, false, 0);
+            }
+        }
+
+        return $this->buildBallotsPdfForPoll($poll, $cards, $posts);
+    }
+
+    private function buildBallotsPdfForPoll(Poll $poll, array $cards, array $posts): string
+    {
+        $pdf = new FPDF();
+
+        foreach ($cards as $card) {
+            $pdf->AddPage();
+            $pdf->SetAutoPageBreak(false);
+
+            $pdf->SetFont('Arial','B',12);
+            $pdf->Cell(0,8, $this->convertToPdfText('Butin de vote - ' . $poll->getTitle()), 0,1,'C');
+            $pdf->SetFont('Arial','',10);
+            $pdf->Cell(0,6, $this->convertToPdfText('Carte: ' . $card->get_code_card()), 0,1,'C');
+            $pdf->Ln(4);
+
+            // get votes for this card
+            $votes = $this->getCardVotesForPoll($poll, $card);
+
+            $pageW = $pdf->GetPageWidth();
+            $usableW = $pageW - 16; // 8mm margins
+            $startX = 8;
+            $gutter = 4;
+            $cols = 2;
+
+            $currentY = $pdf->GetY();
+            $pageH = $pdf->GetPageHeight();
+            $usableH = $pageH - $currentY - 10;
+
+            $nPosts = max(1, count($posts));
+            $rowsPerColumn = (int)ceil($nPosts / $cols);
+            $blockH = floor($usableH / $rowsPerColumn);
+            if ($blockH < 16) $blockH = 16;
+            $colW = floor(($usableW - $gutter) / $cols);
+
+            foreach ($posts as $index => $post) {
+                $col = $index % $cols;
+                $row = (int)floor($index / $cols);
+
+                $blockX = $startX + $col * ($colW + $gutter);
+                $blockY = $currentY + $row * $blockH;
+
+                $pdf->SetFont('Arial','B',10);
+                $pdf->SetTextColor(0,0,0);
+                $pdf->SetXY($blockX + 3, $blockY + 3);
+                $pdf->Cell($colW - 6, 6, $this->convertToPdfText($post->getPostName()), 0, 2);
+
+                $votedCandidateId = $votes[$post->getId()] ?? null;
+
+                if ($votedCandidateId !== null) {
+                    // find candidate info
+                    $found = null;
+                    foreach ($post->jsonSerialize()['candidateList'] as $c) {
+                        if ((int)$c['candId'] === (int)$votedCandidateId) {
+                            $found = $c;
+                            break;
+                        }
+                    }
+
+                    if ($found) {
+                        // green area
+                        $pdf->SetFillColor(0,160,60);
+                        $pdf->Rect($blockX + 3, $blockY + 11, $colW - 6, $blockH - 14, 'F');
+
+                        $candidateUser = $this->usersController->getUserById((int)$found['user_id']);
+                        $imageName = ($candidateUser && $candidateUser->getImageName()) ? $candidateUser->getImageName() : 'default-image.png';
+                        $imagePath = __DIR__ . '/../../app/images/users/' . $imageName;
+
+                        $imgX = $blockX + 5;
+                        $imgY = $blockY + 11;
+                        $imgH = min($blockH - 14, 18);
+                        if ($imgH < 8) $imgH = 8;
+
+                        if (file_exists($imagePath)) {
+                            try { $pdf->Image($imagePath, $imgX, $imgY, $imgH, $imgH); } catch (\Throwable $ex) {}
+                        }
+
+                        $pdf->SetTextColor(255,255,255);
+                        $pdf->SetFont('Arial','B',10);
+                        $pdf->SetXY($imgX + $imgH + 3, $imgY + ($imgH/4));
+                        $pdf->Cell($colW - ($imgH + 14), 6, $this->convertToPdfText($found['name']), 0, 0);
+                        $pdf->SetTextColor(0,0,0);
+
+                    } else {
+                        $pdf->SetFont('Arial','I',9);
+                        $pdf->SetXY($blockX + 3, $blockY + 11);
+                        $pdf->Cell($colW - 6, 6, $this->convertToPdfText("Vote enregistré (candidat introuvable)"), 0, 0);
+                    }
+
+                } else {
+                    $pdf->SetFont('Arial','I',9);
+                    $pdf->SetXY($blockX + 3, $blockY + 11);
+                    $pdf->Cell($colW - 6, 6, $this->convertToPdfText('Aucun vote pour ce poste'), 0, 0);
+                }
+
+                if ($blockY + $blockH > $pageH - 10) {
+                    break;
+                }
+            }
+        }
+
+        return $pdf->Output('S');
+    }
+
+    private function buildVoteReceiptPdfForCardFromData(Poll $poll, Card $card, array $posts, array $votes): string
+    {
+        $pdf = new FPDF();
+        $pdf->AddPage();
+        $pdf->SetAutoPageBreak(false);
+
+        $pdf->SetFont('Arial','B',12);
+        $pdf->Cell(0,8, $this->convertToPdfText('Butin de vote - ' . $poll->getTitle()), 0,1,'C');
+        $pdf->SetFont('Arial','',10);
+        $pdf->Cell(0,6, $this->convertToPdfText('Carte: ' . $card->get_code_card()), 0,1,'C');
+        $pdf->Ln(4);
+
+        foreach ($posts as $post) {
+            $pdf->SetFont('Arial','B',10);
+            $pdf->Cell(0,6, $this->convertToPdfText($post->getPostName()), 0,1);
+            $pdf->SetFont('Arial','',9);
+            $candidateId = $votes[$post->getId()] ?? null;
+            if ($candidateId !== null) {
+                $candidate = $this->candidateController->getCandidate($candidateId);
+                $candidateName = $candidate instanceof \Dls\Evoting\models\Candidate ? $candidate->getName() : 'Candidat introuvable';
+                $pdf->Cell(0,5, $this->convertToPdfText('Choix: ' . $candidateName), 0,1);
+            } else {
+                $pdf->Cell(0,5, $this->convertToPdfText('Choix: Aucun vote enregistré'), 0,1);
+            }
+            $pdf->Ln(2);
+        }
+
+        return $pdf->Output('S');
     }
 
     public function voteWithUserLinkedCardAndPdf():array

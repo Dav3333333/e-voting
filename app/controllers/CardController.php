@@ -77,30 +77,30 @@ class CardController extends ControllersParent
     public function generateCardForPoll(Poll $poll, int $n):bool{
         try {
             $this->deleteCardOfPoll($poll);
-            // $name = $poll->getId() . "-" . $poll->getTitle();
-            // for ($i=0; $i < $n; $i++) { 
-            //     // $code = str_split(md5($name ."".(time()+$i)), 10)[0];
-            //     $code = substr("".(time()+$i*$poll->getId()*$n), -5);
-            //     $q = $this->database->prepare("INSERT INTO card (poll_id, card_code, used) VALUES(?,?,?)");
-                
-            //     $q->execute(array($poll->getId(), $code, false));
-            // }
+            $linkable = $poll->getMode() === "user-link-cardmode" ? 1 : 0;
+
             $a = 1;
             while($a <= $n){
-                // $code = str_split(md5($name ."".(time()+$i)), 10)[0];
-                $code = substr("".(time()+$a*$poll->getId()*$n), -5);
+                $code = substr("".(time() + $a * $poll->getId() * $n), -5);
                 if(!$this->isCardExisting($code)){
-                    $f = $poll->getMode() == "user-link-cardmode"? "(poll_id, card_code, used, linkableToUser) VALUES(?,?,?,1)": "(poll_id, card_code, used) VALUES(?,?,?)";
-                    $q = $this->database->prepare("INSERT INTO card ".$f);
-                    
-                    $q->execute(array($poll->getId(), $code, false));
-                }else{
+                    $q = $this->database->prepare(
+                        "INSERT INTO card (poll_id, card_code, used, linkableToUser, linkedUser) VALUES (?, ?, ?, ?, ?)"
+                    );
+                    $q->execute([
+                        $poll->getId(),
+                        $code,
+                        0,
+                        $linkable,
+                        0
+                    ]);
+                } else {
                     $n++;
                 }
                 $a++;
             }
             return true;
         } catch (Exception $e) {
+            error_log("=== ERREUR GENERATE CARD POLL: " . $e->getMessage() . " ===");
             return false;
         }
     }
@@ -187,11 +187,21 @@ class CardController extends ControllersParent
                 // Mettre à jour en DB
                 $pc = new PollController();
                 $pc->setPollMode($poll, 'cardmode');
+                // IMPORTANT: Mettre à jour l'objet Poll en mémoire pour refléter le changement
+                $poll->setMode('cardmode');
                 error_log("Mode de scrutin absent, passage en cardmode par défaut pour poll " . $poll->getId());
             }
 
-            // Si on est en user-link-cardmode, on essaie de récupérer les enrolements (matricule, name, email, card_code)
-            if ($poll->getIsCard_user_link_mode() || !$poll->hasMode()) {
+            // Si le scrutin est en mode carte et qu'il n'y a encore aucune carte, on en génère quelques-unes automatiquement
+            if (!$this->hasCard($poll)) {
+                $defaultCardCount = 10;
+                error_log("=== Génération automatique de $defaultCardCount cartes pour le scrutin " . $poll->getId() . " ===");
+                $this->generateCardForPoll($poll, $defaultCardCount);
+            }
+
+            // Si on est en user-link-cardmode SEULEMENT (pas en cardmode simple)
+            if ($poll->getIsCard_user_link_mode()) {
+                error_log("=== Mode user-link-cardmode détecté, récupération des enrolements ===");
                 $q = $this->database->prepare("SELECT u.matricule AS matricule, u.name AS name, u.email AS email, e.card_code AS card_code
                                               FROM enrolements e
                                               JOIN users u ON u.id = e.id_user
@@ -199,16 +209,19 @@ class CardController extends ControllersParent
                                               ORDER BY u.email ASC");
                 $q->execute([$poll->getId()]);
                 $rows = $q->fetchAll(PDO::FETCH_ASSOC);
+                error_log("=== Enrolements trouvés: " . count($rows) . " ===");
 
                 // if no enrolements, fallback to cards linked to users (if any)
                 if (empty($rows)) {
+                    error_log("=== Pas d'enrolements trouvés, recherche des cartes liées aux utilisateurs ===");
                     $q2 = $this->database->prepare("SELECT u.matricule AS matricule, u.name AS name, u.email AS email, c.card_code AS card_code
                                                    FROM card c
                                                    JOIN users u ON u.id = c.linkedUser
-                                                   WHERE c.poll_id = ? AND c.linkableToUser = 1
+                                                   WHERE c.poll_id = ? AND c.linkableToUser = 1 AND c.linkedUser IS NOT NULL AND c.linkedUser != ''
                                                    ORDER BY u.email ASC");
                     $q2->execute([$poll->getId()]);
                     $rows = $q2->fetchAll(PDO::FETCH_ASSOC);
+                    error_log("=== Cartes liées trouvées: " . count($rows) . " ===");
                 }
             }
 
