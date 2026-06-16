@@ -186,6 +186,14 @@ class Scrutin{
           }
         }
 
+
+        // downloading results
+        if(target.id == "download-results"){
+          const idPoll = target.closest(".scrutin-container").id;
+          console.log("downloading results for poll id: ", idPoll);
+          pdfPrint.telechargerPDFResult(idPoll);
+        }
+
       });
     }
 

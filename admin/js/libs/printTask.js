@@ -198,6 +198,38 @@ class PdfPrint {
         }
     }
 
+    async telechargerPDFResult(idPoll) {
+        let loadingIndicator = null;
+        
+        try {
+            loadingIndicator = this.createLoadingIndicator();
+            document.body.appendChild(loadingIndicator);
+
+            const blob = await api.getBlob(`poll/results/pdf/${idPoll}`);
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            
+            a.href = url;
+            a.download = `scrutin-${idPoll}-resultats.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            
+            // Nettoyage
+            setTimeout(() => {
+                if (document.body.contains(a)) {
+                    document.body.removeChild(a);
+                }
+                window.URL.revokeObjectURL(url);
+            }, 1000);
+            
+        } catch (error) {
+            console.error('Erreur téléchargement PDF:', error);
+            this.showError(error.message);
+        } finally {
+            this.removeLoadingIndicatorSafe(loadingIndicator);
+        }
+    }
+
     // Méthode de diagnostic pour résoudre le problème "PDF vide"
     async debugPDF(idPoll) {
         try {

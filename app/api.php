@@ -93,35 +93,35 @@ class Api
                }
           });
 
-               // ballots PDF: one ballot per page for a poll (cards -> ballot pages)
-               $this->add_roote("get", "poll/{idPoll}/ballots/pdf", function($idPoll) {
-                    try {
-                         $idPoll = intval($idPoll);
-                         if ($idPoll <= 0) {
-                              http_response_code(400);
-                              header('Content-Type: application/json');
-                              return json_encode(['error' => 'ID de scrutin invalide']);
-                         }
-
-                         $res = $this->controller->getPollBallotsPdf($idPoll);
-                         if (is_string($res)) {
-                              header('Content-Type: application/pdf');
-                              header('Content-Disposition: inline; filename="ballots_poll_' . $idPoll . '.pdf"');
-                              header('Cache-Control: no-cache, no-store, must-revalidate');
-                              header('Pragma: no-cache');
-                              header('Expires: 0');
-                              echo $res;
-                              exit;
-                         }
-
+          // ballots PDF: one ballot per page for a poll (cards -> ballot pages)
+          $this->add_roote("get", "poll/{idPoll}/ballots/pdf", function($idPoll) {
+               try {
+                    $idPoll = intval($idPoll);
+                    if ($idPoll <= 0) {
+                         http_response_code(400);
                          header('Content-Type: application/json');
-                         return json_encode($res);
-                    } catch (Exception $e) {
-                         http_response_code(500);
-                         header('Content-Type: application/json');
-                         return json_encode(['error' => 'Erreur interne du serveur', 'message' => $e->getMessage()]);
+                         return json_encode(['error' => 'ID de scrutin invalide']);
                     }
-               });
+
+                    $res = $this->controller->getPollBallotsPdf($idPoll);
+                    if (is_string($res)) {
+                         header('Content-Type: application/pdf');
+                         header('Content-Disposition: inline; filename="ballots_poll_' . $idPoll . '.pdf"');
+                         header('Cache-Control: no-cache, no-store, must-revalidate');
+                         header('Pragma: no-cache');
+                         header('Expires: 0');
+                         echo $res;
+                         exit;
+                    }
+
+                    header('Content-Type: application/json');
+                    return json_encode($res);
+               } catch (Exception $e) {
+                    http_response_code(500);
+                    header('Content-Type: application/json');
+                    return json_encode(['error' => 'Erreur interne du serveur', 'message' => $e->getMessage()]);
+               }
+          });
      }
 
      // Méthode utilitaire pour vérifier l'accès (à adapter selon votre auth)
