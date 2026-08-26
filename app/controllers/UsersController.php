@@ -333,6 +333,114 @@ class UsersController extends ControllersParent{
         }
     }
 
+    // /**
+    //  * create new Users from the csv file uplaodes
+    //  * @param mixed $handle
+    //  * @return array{message: string, status: string}
+    //  */
+    // public function createUsersFromCvsFile($handle):array{
+    //     try {
+    //         $header = fgetcsv($handle);
+    //         $cardController = new CardController();
+
+    //         if ($header === false) return ['status'=>'fail', 'message'=>'le fichier ne contient aucune donnes'];
+
+    //         // Normalise et détecte si le fichier contient un en-tête valide
+    //         $header = array_map(function($h){ return strtolower(trim((string)$h)); }, $header);
+    //         $expectedKeys = ['name','matricule','email','rfid','poll'];
+
+    //         // Si l'en-tête ne contient pas les colonnes attendues, on considère qu'il n'y a pas d'en-tête
+    //         if (count(array_intersect($expectedKeys, $header)) < count($expectedKeys)) {
+    //             // remettre le pointeur au début pour lire toutes les lignes (y compris la première)
+    //             rewind($handle);
+    //             $header = $expectedKeys;
+    //         }
+
+    //         $data = [];
+    //         while (($row = fgetcsv($handle)) !== false) {
+    //             if ($row === null) continue;
+    //             // Ignore les lignes vides
+    //             $allEmpty = true;
+    //             foreach ($row as $cell) { if (trim((string)$cell) !== '') { $allEmpty = false; break; } }
+    //             if ($allEmpty) continue;
+
+    //             if (count($row) !== count($header)) {
+    //                 continue;
+    //             }
+    //             $combined = @array_combine($header, $row);
+    //             if ($combined !== false) {
+    //                 $data[] = $combined;
+    //             }
+    //         }
+
+    //         if (empty($data)) return ['status'=>'fail', 'message'=>'le fichier est vide'];
+
+    //         // Vérifie que les bonnes colonnes sont présentes (après normalisation)
+    //         $firstRowKeys = array_map('strtolower', array_keys($data[0]));
+    //         $missing = array_diff($expectedKeys, $firstRowKeys);
+    //         if (!empty($missing)) {
+    //             return ['status'=>'fail', 'message'=>'le fichier doit contenir les colonnes: name, matricule, email, rfid, poll'];
+    //         }
+
+    //         $data = $this->rankUserByPoll($data);
+
+    //         $created_user = [];
+    //         $enroled_user = [];
+    //         $founded_poll = [];
+    //         $unfounded_poll = [];
+    //         $cardsEnroled = [];
+
+    //         // adding users using create user function
+    //         foreach ($data as $key => $pollData) {
+    //             $poll = $this->getPollFromTitleText($key);
+
+    //             if ($poll == null) {
+    //                 $unfounded_poll[] = $key;
+    //                 continue;
+    //             }
+
+    //             // Ensure there are enough cards for this poll: generate missing ones if needed
+    //             $needed = count($pollData) - $this->cardController->countCardOfPoll($poll);
+    //             if ($needed > 0) {
+    //                 $this->cardController->generateCardForPoll($poll, $needed);
+    //             }
+
+    //             foreach ($pollData as $k => $value) {
+    //                 // check if the user doesn't exist
+    //                 if (!$this->isUserMailExist($value['email'], $value['matricule'])) {
+    //                     $created_user[] = $this->createUser($value['matricule'], $value['email'], $value['name'], $value['rfid']);
+    //                 }
+
+    //                 $user = $this->getUserByMailMatricule($value['matricule'], $value['email']);
+    //                 if (!($user instanceof User)) {
+    //                     continue;
+    //                 }
+
+    //                 $enrollRes = $this->enroleUserToPoll($user, $poll);
+    //                 $cardsEnroled[] = $enrollRes;
+    //                 if ($enrollRes === true) {
+    //                     $enroled_user[] = $user;
+    //                     $founded_poll[] = $poll;
+    //                 }
+    //             }
+    //         }
+    //         return [
+    //             'status'=> 'success', 
+    //             'message'=>'ajout reussi', 
+    //             'created_user'=>$created_user, 
+    //             'enroled_user'=>$enroled_user, 
+    //             'founded_poll'=>$founded_poll,
+    //             'unfounded_poll'=>$unfounded_poll,
+    //             'data'=>$data,
+    //             'cards_enroled'=> $cardsEnroled
+    //         ];
+    //     } catch (\Throwable $th) {
+    //         return array($th);
+    //     }
+    // }
+
+
+
     /**
      * create new Users from the csv file uplaodes
      * @param mixed $handle
@@ -342,6 +450,7 @@ class UsersController extends ControllersParent{
         try {
             $header = fgetcsv($handle);
             $cardController = new CardController();
+            $wrong_user = [];
 
             if ($header === false) return ['status'=>'fail', 'message'=>'le fichier ne contient aucune donnes'];
 
@@ -365,6 +474,7 @@ class UsersController extends ControllersParent{
                 if ($allEmpty) continue;
 
                 if (count($row) !== count($header)) {
+                    $wrong_user [] = ['row'=>$row, 'reason'=>'Nombre de colonnes incorrect'];
                     continue;
                 }
                 $combined = @array_combine($header, $row);
@@ -402,6 +512,7 @@ class UsersController extends ControllersParent{
                 // Ensure there are enough cards for this poll: generate missing ones if needed
                 $needed = count($pollData) - $this->cardController->countCardOfPoll($poll);
                 if ($needed > 0) {
+                    // C'est ici qu'intervient la méthode révisée qui n'efface plus les anciennes cartes
                     $this->cardController->generateCardForPoll($poll, $needed);
                 }
 
@@ -416,12 +527,22 @@ class UsersController extends ControllersParent{
                         continue;
                     }
 
+                    // --- DEBUT DE LA CORRECTION INTÉGRÉE ---
+                    
+                    // Exécute l'enrôlement (qui va appeler linkUserToCard révisé)
                     $enrollRes = $this->enroleUserToPoll($user, $poll);
-                    $cardsEnroled[] = $enrollRes;
-                    if ($enrollRes === true) {
+                    
+                    // CORRECTION LOGIQUE : Si l'enrôlement renvoie true OU s'il était déjà enrôlé (null),
+                    // on considère que l'utilisateur fait partie du traitement réussi.
+                    if ($enrollRes === true || $enrollRes === null) {
                         $enroled_user[] = $user;
                         $founded_poll[] = $poll;
+                        $cardsEnroled[] = "User " . $user->getId() . " lié avec succès ou déjà inscrit.";
+                    } else {
+                        $cardsEnroled[] = "Échec d'enrôlement pour l'user " . $user->getId() . " : " . json_encode($enrollRes);
                     }
+                    
+                    // --- FIN DE LA CORRECTION INTÉGRÉE ---
                 }
             }
             return [
@@ -432,12 +553,15 @@ class UsersController extends ControllersParent{
                 'founded_poll'=>$founded_poll,
                 'unfounded_poll'=>$unfounded_poll,
                 'data'=>$data,
-                'cards_enroled'=> $cardsEnroled
+                'cards_enroled'=> $cardsEnroled, 
+                'wrong_user'=>$wrong_user
             ];
         } catch (\Throwable $th) {
             return array($th);
         }
     }
+
+
 
     public function uploadUsersCsvFile($file):bool{
         $uploadDir = __DIR__ . "/../../app/files/uploadUsersFile/";

@@ -61,16 +61,24 @@ class User implements JsonSerializable
         return $this->matricule;
     }
 
+    // public function setMatricule(String $matricule):void{
+    //     $this->$matricule;
+    // }
+
     public function setMatricule(String $matricule):void{
-        $this->$matricule;
+        $this->matricule = $matricule; // Correction ici (pas de second $)
     }
 
     public function getStatus():String{
         return $this->status;
     }
 
+    // public function setStatus(String $status):void{
+    //     $this->$status;
+    // }
+
     public function setStatus(String $status):void{
-        $this->$status;
+        $this->status = $status; // Correction ici (pas de second $)
     }
 
     public function isAdmin():bool{

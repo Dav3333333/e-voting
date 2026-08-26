@@ -74,13 +74,50 @@ class CardController extends ControllersParent
         return $q->execute(array($poll->getId()));
     }
 
+    // public function generateCardForPoll(Poll $poll, int $n):bool{
+    //     try {
+    //         $this->deleteCardOfPoll($poll);
+    //         $linkable = $poll->getMode() === "user-link-cardmode" ? 1 : 0;
+
+    //         $a = 1;
+    //         while($a <= $n){
+    //             $code = substr("".(time() + $a * $poll->getId() * $n), -5);
+    //             if(!$this->isCardExisting($code)){
+    //                 $q = $this->database->prepare(
+    //                     "INSERT INTO card (poll_id, card_code, used, linkableToUser, linkedUser) VALUES (?, ?, ?, ?, ?)"
+    //                 );
+    //                 $q->execute([
+    //                     $poll->getId(),
+    //                     $code,
+    //                     0,
+    //                     $linkable,
+    //                     0
+    //                 ]);
+    //             } else {
+    //                 $n++;
+    //             }
+    //             $a++;
+    //         }
+    //         return true;
+    //     } catch (Exception $e) {
+    //         error_log("=== ERREUR GENERATE CARD POLL: " . $e->getMessage() . " ===");
+    //         return false;
+    //     }
+    // }
+
     public function generateCardForPoll(Poll $poll, int $n):bool{
         try {
-            $this->deleteCardOfPoll($poll);
-            $linkable = $poll->getMode() === "user-link-cardmode" ? 1 : 0;
+            // SUPPRIMÉ : $this->deleteCardOfPoll($poll); 
+            // On ne supprime plus les cartes existantes, on AJOUTE simplement les manquantes.
+
+            // Sécurité pour le mode linkable (s'adapte à getIsCard_user_link_mode() ou au texte brut)
+            $linkable = ($poll->getIsCard_user_link_mode() || $poll->getMode() === "user-link-cardmode") ? 1 : 0;
 
             $a = 1;
-            while($a <= $n){
+            $generated = 0;
+            
+            // On boucle jusqu'à ce qu'on ait réellement créé le nombre $n de cartes uniques requis
+            while($generated < $n){
                 $code = substr("".(time() + $a * $poll->getId() * $n), -5);
                 if(!$this->isCardExisting($code)){
                     $q = $this->database->prepare(
@@ -93,10 +130,14 @@ class CardController extends ControllersParent
                         $linkable,
                         0
                     ]);
-                } else {
-                    $n++;
+                    $generated++;
                 }
                 $a++;
+                
+                // Éviter une boucle infinie en cas de problème de génération de timestamp
+                if ($a > ($n * 10)) {
+                    break;
+                }
             }
             return true;
         } catch (Exception $e) {
@@ -105,9 +146,45 @@ class CardController extends ControllersParent
         }
     }
 
+
+    // public function linkUserToCard(User $user, Poll $poll):Card|null|string{
+    //     try {
+    //         //check 
+    //         $check = $this->database->prepare("SELECT * FROM card WHERE poll_id = ? AND linkedUser = ? LIMIT 1");
+    //         $check->execute([$poll->getId(), $user->getId()]);
+
+    //         if ($check->rowCount() == 1) {
+    //             $cardData = $check->fetch(PDO::FETCH_ASSOC);
+    //             return $this->getCardByCode($cardData['card_code']);
+    //         }
+
+    //         // getting the nextAvailble Card
+    //         $q =  $this->database->prepare("SELECT * FROM `card` c 
+    //                                     WHERE c.poll_id = ? 
+    //                                     AND c.linkableToUser = 1
+    //                                     AND (c.linkedUser IS NULL OR c.linkedUser = '')
+    //                                     AND c.card_code NOT IN (SELECT v.card_code FROM voice AS v)
+    //                                     LIMIT 1");
+    //         $q->execute(array($poll->getId()));
+        
+            
+    //         $cardData = $q->fetch(PDO::FETCH_ASSOC); 
+
+    //         if(!$cardData){
+    //             return $cardData;
+    //         }
+
+    //         $insQ = $this->database->prepare("UPDATE card SET linkedUser = ? WHERE id = ?");
+    //         $insQ->execute(array($user->getId(), $cardData['id']));
+    //         return $this->getCardByCode($cardData['card_code']);
+    //     } catch (\Throwable $th) {
+    //         return $th->getMessage();
+    //     }
+    // }
+
     public function linkUserToCard(User $user, Poll $poll):Card|null|string{
         try {
-            //check 
+            // 1. Vérifier si cet utilisateur a déjà une carte assignée pour ce scrutin
             $check = $this->database->prepare("SELECT * FROM card WHERE poll_id = ? AND linkedUser = ? LIMIT 1");
             $check->execute([$poll->getId(), $user->getId()]);
 
@@ -116,24 +193,26 @@ class CardController extends ControllersParent
                 return $this->getCardByCode($cardData['card_code']);
             }
 
-            // getting the nextAvailble Card
-            $q =  $this->database->prepare("SELECT * FROM `card` c 
+            // 2. Récupérer la prochaine carte disponible
+            // CORRECTION : On accepte l'attribution même si linkableToUser est à 0 ou 1 lors d'un import CSV direct,
+            // ou alors on s'assure qu'on cherche les cartes de ce pool non occupées.
+            $q = $this->database->prepare("SELECT * FROM `card` c 
                                         WHERE c.poll_id = ? 
-                                        AND c.linkableToUser = 1
-                                        AND (c.linkedUser IS NULL OR c.linkedUser = '')
+                                        AND (c.linkedUser IS NULL OR c.linkedUser = '' OR c.linkedUser = 0)
                                         AND c.card_code NOT IN (SELECT v.card_code FROM voice AS v)
                                         LIMIT 1");
             $q->execute(array($poll->getId()));
         
-            
             $cardData = $q->fetch(PDO::FETCH_ASSOC); 
 
             if(!$cardData){
-                return $cardData;
+                return null; // Plus de cartes disponibles dans le pool
             }
 
-            $insQ = $this->database->prepare("UPDATE card SET linkedUser = ? WHERE id = ?");
+            // 3. Assigner la carte à l'utilisateur
+            $insQ = $this->database->prepare("UPDATE card SET linkedUser = ?, linkableToUser = 1 WHERE id = ?");
             $insQ->execute(array($user->getId(), $cardData['id']));
+            
             return $this->getCardByCode($cardData['card_code']);
         } catch (\Throwable $th) {
             return $th->getMessage();
@@ -352,6 +431,39 @@ class CardController extends ControllersParent
         return $q->execute(array($card->get_id()));
     }
 
+    // public function isCardExistingAndUnused(string $code_card):bool{
+    //     foreach ($this->getAll() as $key => $value) {
+    //         if($value->get_code_card() == $code_card && $value->isUsed() == false){
+    //             return true;
+    //         }
+    //     }
+    //     return false;
+    // }
+
+    // public function isCardExisting(string $code_card):bool{
+    //     foreach ($this->getAll() as $key => $value) {
+    //         if($value->get_code_card() == $code_card){
+    //             return true;
+    //         }
+    //     }
+    //     return false;
+    // }
+
+    // public function isCardOfPoll(Poll $poll, Card $card):bool{
+    //     foreach ($this->getCardOfPoll($poll) as $key => $value) {
+    //         if($value->get_code_card() == $card->get_code_card() && $value->get_poll_id() == $poll->getId()){
+    //             return true;
+    //         }
+    //     }
+    //     return false;
+    // }
+
+    // public function isValidCardForPoll(Poll $poll, Card $code_card):bool{
+    //     return $this->isCardOfPoll($poll, $code_card) 
+    //             && $this->isCardExistingAndUnused($code_card->get_code_card())
+    //             && ($poll->getMode() ==  $code_card->getMode());
+    // }
+
     public function isCardExistingAndUnused(string $code_card):bool{
         foreach ($this->getAll() as $key => $value) {
             if($value->get_code_card() == $code_card && $value->isUsed() == false){
@@ -380,9 +492,25 @@ class CardController extends ControllersParent
     }
 
     public function isValidCardForPoll(Poll $poll, Card $code_card):bool{
-        return $this->isCardOfPoll($poll, $code_card) 
-                && $this->isCardExistingAndUnused($code_card->get_code_card())
-                && ($poll->getMode() ==  $code_card->getMode());
+        // 1. Vérifications de base (Scrutin correspondant et carte non utilisée)
+        if (!$this->isCardOfPoll($poll, $code_card) || !$this->isCardExistingAndUnused($code_card->get_code_card())) {
+            return false;
+        }
+
+        // 2. Normalisation et vérification croisée du mode
+        $pollMode = $poll->getMode(); // "user-link-cardmode" ou "cardmode"
+        
+        if ($pollMode === "user-link-cardmode") {
+            // Pour ce mode, la carte doit obligatoirement être "linkable"
+            return $code_card->isLinkable();
+        }
+
+        if ($pollMode === "cardmode") {
+            // Pour le mode simple, la carte ne doit pas imposer de liaison utilisateur
+            return !$code_card->isLinkable();
+        }
+
+        return false;
     }
 
 }

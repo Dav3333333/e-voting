@@ -64,8 +64,15 @@ class Card implements JsonSerializable
         return $this->linkedUser;
     }
 
+    // public function getMode():string{
+    //     if($this->linkableToUser && $this->linkedUser) return "user-link-cardmode";
+    //     return "cardmode"; 
+    // }
+
     public function getMode():string{
-        if($this->linkableToUser && $this->linkedUser) return "user-link-cardmode";
+        // Si la carte a été créée pour être liée à un utilisateur, 
+        // son mode intrinsèque est lié au système utilisateur, même si linkedUser est vide à l'instant T.
+        if($this->linkableToUser) return "user-link-cardmode";
         return "cardmode"; 
     }
 
